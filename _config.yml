@@ -55,7 +55,9 @@ plugins:
 #   - vendor/ruby/
 
 # Enable tag collections
-collections:
-  tags:
-    output: true
-    permalink: /tags/:path/
+# collections:
+#   tags:
+#     output: true
+
+future: true
+include: ["tags.html"]
