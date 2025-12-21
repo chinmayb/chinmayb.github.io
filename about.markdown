@@ -3,17 +3,15 @@ layout: default
 permalink: /about/
 ---
 
-<div class="about-lead">
-    <h1>Welcome to Bits & Peace</h1>
-    <p>Exploring technology, life thoughts & learnings one bit at a time.</p>
-    <h2>Hello, I'm Chinmaya Bharadwaj</h2>
-    <p class="about-lead__intro">
-        Software Engineer passionate about building innovative solutions and exploring new technologies.
-        I love diving deep into problems, understanding how it works and coming up with elegant solutions.
-    </p>
-</div>
-
 <div class="about-container">
+    <section class="about-lead">
+        <h2>Hello, I'm Chinmaya Bharadwaj</h2>
+         <p class="about-lead__intro">
+        Welcome to Bits & Peace, Exploring technology, life thoughts & learnings one bit at a time
+            Software Engineer passionate about building innovative solutions and exploring new technologies.
+            I love diving deep into problems, understanding how it works and coming up with elegant solutions.
+         </p>
+    </section>
 
     <section class="about-skills">
         <h2>Skills & Expertise</h2>
@@ -58,8 +56,12 @@ permalink: /about/
                 <p>Exploring new ideas and perspectives through books</p>
             </div>
             <div class="hobby-item">
-                <h3>Classical Music</h3>
+                <h3>Classical & Rock Music</h3>
                 <p>Appreciating anything classical. Carnatic,Jazz,Hindustani</p>
+            </div>
+            <div class="hobby-item">
+                <h3>Learning piano</h3>
+                <p>Wanted to learn new language, So why not it be musical? </p>
             </div>
             <div class="hobby-item">
                 <h3>Chess, Badminton</h3>
@@ -70,10 +72,12 @@ permalink: /about/
 
     <section class="about-interests">
         <h2>Why This Blog?</h2>
-        <p>Through Bits & Peace, I share my experiences and insights in software engineering. 
-           I believe in the power of knowledge sharing and continuous learning. 
-           Here, you'll find my thoughts on technology, coding practices, and lessons learned 
-           from real-world projects.</p>
+        <p>
+            Through Bits & Peace, I share my experiences and insights in software engineering.
+            I believe in the power of knowledge sharing and continuous learning.
+            Here, you'll find my thoughts on technology, coding practices, and lessons learned
+            from real-world projects.
+        </p>
     </section>
 </div>
 

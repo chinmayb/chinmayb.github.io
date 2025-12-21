@@ -22,9 +22,8 @@
             {{ content }}
         </main>
         <aside class="sidebar">
-            {% include articles-widget.html %}
-
             {% if page.url == '/' %}
+            {% include articles-widget.html %}
             {% include podcasts-widget.html %}
             {% endif %}
         </aside>
