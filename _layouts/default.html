@@ -22,9 +22,9 @@
             {{ content }}
         </main>
         <aside class="sidebar">
-            {% if page.url == '/' %}
-            {% include articles-widget.html %}
-            {% include podcasts-widget.html %}
+            {% if page.url == '/' or page.url == '/index.html' %}
+              {% include articles-widget.html %}
+              {% include podcasts-widget.html %}
             {% endif %}
         </aside>
     </div>
