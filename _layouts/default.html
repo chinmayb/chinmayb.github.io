@@ -17,8 +17,17 @@
             <a href="/about" {% if page.url == "/about/" %}class="active"{% endif %}>About</a>
         </nav>
     </header>
-    <main>
-        {{ content }}
-    </main>
+    <div class="container">
+        <main>
+            {{ content }}
+        </main>
+        <aside class="sidebar">
+            {% include articles-widget.html %}
+
+            {% if page.url == '/' %}
+            {% include podcasts-widget.html %}
+            {% endif %}
+        </aside>
+    </div>
 </body>
 </html>

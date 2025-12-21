@@ -67,10 +67,130 @@ nav a.active {
 }
 
 /* Layout */
-main {
-    max-width: 800px;
+.container {
+    display: flex;
+    max-width: 1200px;
     margin: 0 auto;
+    padding: 0 2rem;
+}
+
+main {
+    flex: 1;
     padding: 2rem;
+    min-width: 0; /* Prevent flex item from overflowing */
+}
+
+.sidebar {
+    width: 300px;
+    margin-left: 2rem;
+    position: sticky;
+    top: 2rem;
+    align-self: flex-start; /* Keep the stack aligned to the top */
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.sidebar-card {
+    padding: 1.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-card h3 {
+    font-size: 1.4rem;
+    margin: 0 0 0.75rem 0;
+    color: #1a202c;
+}
+
+.sidebar-card ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.sidebar-card li {
+    margin: 0;
+}
+
+.sidebar-card a {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    text-decoration: none;
+    color: #1f2937;
+    font-size: 0.95rem;
+    font-weight: 500;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.sidebar-card a::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #a0aec0;
+    display: inline-block;
+}
+
+.sidebar-card a:hover {
+    transform: translateY(-2px);
+    border-color: #cbd5e0;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+}
+
+.podcast-widget ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.podcast-widget li {
+    margin: 0;
+}
+
+.podcast-widget a {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    text-decoration: none;
+    color: #1f2937;
+    font-size: 0.95rem;
+    font-weight: 500;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.podcast-widget a::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #63b3ed;
+    display: inline-block;
+}
+
+.podcast-widget a:hover {
+    transform: translateY(-2px);
+    border-color: #cbd5e0;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
 }
 
 /* Home */
@@ -81,8 +201,8 @@ main {
 }
 
 .hero {
-    text-align: center;
-    padding: 4rem 0;
+    text-align: left;
+    padding: 3rem 0 2rem;
 }
 
 .hero h1 {
@@ -95,9 +215,14 @@ main {
 }
 
 .hero p {
-    font-size: 1.2rem;
-    color: #718096;
-    margin-bottom: 2rem;
+    font-size: 1.15rem;
+    color: #4a5568;
+    margin-bottom: 1.5rem;
+}
+
+.about-hero {
+    text-align: center;
+    padding: 3rem 0 2rem;
 }
 
 .posts {
@@ -117,6 +242,22 @@ main {
 .post-preview h3 {
     font-size: 1.5rem;
     margin: 0 0 0.5rem 0;
+}
+
+.podcast-block {
+    margin-top: 3rem;
+}
+
+.podcast-block h2 {
+    margin-bottom: 1rem;
+}
+
+.podcast-block .podcast-widget {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    padding: 1.25rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 }
 
 .post-preview h3 a {
@@ -161,9 +302,41 @@ h3 {
 }
 
 /* About Page */
+.about-lead {
+    max-width: 800px;
+    margin: 0 auto;
+    text-align: center;
+    padding: 3rem 1.5rem 2rem;
+}
+
+.about-lead h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.about-lead h2 {
+    font-size: 1.9rem;
+    margin: 2rem 0 0.75rem;
+    font-weight: 600;
+}
+
+.about-lead p {
+    font-size: 1.15rem;
+    color: #4a5568;
+    margin: 0 auto;
+    max-width: 640px;
+    line-height: 1.6;
+}
+
+.about-lead__intro {
+    font-size: 1.05rem;
+}
+
 .about-container {
     max-width: 800px;
     margin: 0 auto;
+    padding: 0 1.5rem 3rem;
 }
 
 .skills-grid {
@@ -211,5 +384,24 @@ h3 {
 
     .skills-grid {
         grid-template-columns: 1fr;
+    }
+
+    .container {
+        flex-direction: column;
+        padding: 0 1rem;
+    }
+
+    main {
+        padding: 1rem;
+    }
+
+    .sidebar {
+        width: auto;
+        margin-left: 0;
+        margin-top: 1rem;
+        padding: 1rem;
+        position: static;
+        border: 1px solid #e2e8f0;
+        box-shadow: none;
     }
 }

@@ -3,14 +3,17 @@ layout: default
 permalink: /about/
 ---
 
+<div class="about-lead">
+    <h1>Welcome to Bits & Peace</h1>
+    <p>Exploring technology, life thoughts & learnings one bit at a time.</p>
+    <h2>Hello, I'm Chinmaya Bharadwaj</h2>
+    <p class="about-lead__intro">
+        Software Engineer passionate about building innovative solutions and exploring new technologies.
+        I love diving deep into problems, understanding how it works and coming up with elegant solutions.
+    </p>
+</div>
+
 <div class="about-container">
-    <section class="about-intro">
-        <h1>Hello, I'm Chinmaya Bharadwaj</h1>
-        <p class="intro-text">
-            Software Engineer passionate about building innovative solutions and exploring new technologies. 
-            I love diving deep into problems, understanding how it works and coming up with elegant solutions.
-        </p>
-    </section>
 
     <section class="about-skills">
         <h2>Skills & Expertise</h2>
@@ -36,7 +39,7 @@ permalink: /about/
     <section class="about-experience">
         <h2>Experience</h2>
         <div class="experience-item">
-            <h3>Senior Software Engineer</h3>
+            <h3>Staff Software Engineer</h3>
             <p>Currently working on building scalable cloud solutions, focusing on:</p>
             <ul>
                 <li>Microservices Architecture</li>
@@ -74,116 +77,4 @@ permalink: /about/
     </section>
 </div>
 
-<style>
-.about-container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem;
-    line-height: 1.6;
-}
-
-.about-intro {
-    text-align: center;
-    margin-bottom: 4rem;
-}
-
-.about-intro h1 {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-    font-weight: 600;
-}
-
-.intro-text {
-    font-size: 1.2rem;
-    color: #666;
-    max-width: 600px;
-    margin: 0 auto;
-}
-
-section {
-    margin-bottom: 4rem;
-}
-
-h2 {
-    font-size: 1.8rem;
-    margin-bottom: 2rem;
-    font-weight: 500;
-    color: #333;
-}
-
-h3 {
-    font-size: 1.3rem;
-    margin-bottom: 1rem;
-    color: #444;
-}
-
-.skills-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 2rem;
-}
-
-.skill-category ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.skill-category li {
-    margin: 0.5rem 0;
-    color: #555;
-}
-
-.experience-item {
-    margin-bottom: 2rem;
-    padding: 1.5rem;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    transition: transform 0.3s ease;
-}
-
-.experience-item:hover {
-    transform: translateY(-5px);
-}
-
-@media (max-width: 600px) {
-    .about-intro h1 {
-        font-size: 2rem;
-    }
-    
-    .intro-text {
-        font-size: 1.1rem;
-    }
-    
-    .skills-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-.hobbies-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.5rem;
-}
-
-.hobby-item {
-    padding: 1rem;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    transition: transform 0.3s ease;
-}
-
-.hobby-item:hover {
-    transform: translateY(-3px);
-}
-
-.hobby-item h3 {
-    margin-bottom: 0.5rem;
-}
-
-.hobby-item p {
-    color: #666;
-    font-size: 0.95rem;
-}
-</style>
 
