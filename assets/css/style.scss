@@ -1,1 +1,16 @@
 @import "{{ site.theme }}";
+
+.articles-widget .longreads-more {
+	margin-top: 0.5rem;
+}
+
+.articles-widget .longreads-more[open] > ul {
+	max-height: 180px;
+	overflow-y: auto;
+	margin-top: 0.35rem;
+}
+
+.articles-widget .longreads-more summary {
+	cursor: pointer;
+	font-weight: 600;
+}

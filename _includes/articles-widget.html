@@ -1,8 +1,54 @@
 <div class="articles-widget sidebar-card">
   <h3>Long Articles</h3>
   <ul>
-    <li><a href="https://www.darioamodei.com/essay/machines-of-loving-grace" target="_blank" rel="noopener">Machines of loving Grace</a></li>
-    <li><a href="https://abseil.io/fast/hints.html" target="_blank" rel="noopener">Performance Hints</a></li>
-    <li><a href="https://bigthink.com/thinking/on-learning-how-to-learn/" target="_blank" rel="noopener">On Learning How to Learn</a></li>
+    {% assign longreads = site.longreads | first %}
+    {% if longreads %}
+      {% assign rendered = longreads.content | markdownify %}
+      {% assign chunks = rendered | split: '<li>' %}
+      {% assign link_items = '' | split: '' %}
+      {% for chunk in chunks %}
+        {% if chunk contains '</li>' %}
+          {% assign entry = chunk | split: '</li>' | first | strip %}
+          {% if entry != '' %}
+            {% assign link_items = link_items | push: entry %}
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+
+      {% assign top_limit = 3 %}
+      {% assign shown = 0 %}
+      {% for entry in link_items %}
+        <li>{{ entry }}</li>
+        {% assign shown = shown | plus: 1 %}
+        {% if shown == top_limit %}
+          {% break %}
+        {% endif %}
+      {% endfor %}
+
+      {% if shown == 0 %}
+        <li>No long reads yet.</li>
+      {% endif %}
+    {% else %}
+      <li>No long reads yet.</li>
+    {% endif %}
   </ul>
+
+  {% if longreads and link_items and link_items.size > top_limit %}
+    <details class="longreads-more">
+      <summary>View all long reads</summary>
+      <ul>
+        {% assign has_more = false %}
+        {% for entry in link_items offset: top_limit %}
+          {% assign trimmed = entry | strip %}
+          {% if trimmed != '' %}
+            {% assign has_more = true %}
+            <li>{{ trimmed }}</li>
+          {% endif %}
+        {% endfor %}
+        {% if has_more == false %}
+          <li>No additional links.</li>
+        {% endif %}
+      </ul>
+    </details>
+  {% endif %}
 </div>

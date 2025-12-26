@@ -59,5 +59,10 @@ plugins:
 #   tags:
 #     output: true
 
+# Longform reading list
+collections:
+  longreads:
+    output: false
+
 future: true
 include: ["tags.html"]
