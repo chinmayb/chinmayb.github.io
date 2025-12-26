@@ -62,7 +62,8 @@ plugins:
 # Longform reading list
 collections:
   longreads:
-    output: false
+    output: true
+    permalink: /longreads/:name/
 
 future: true
 include: ["tags.html"]
