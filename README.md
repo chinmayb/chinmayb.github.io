@@ -1,47 +1,99 @@
-# Personal Portfolio & Blog
+# chinmayb.github.io
 
-This is my personal portfolio and blog website, built with Jekyll and hosted on GitHub Pages. The site showcases my professional experience, technical skills, and thoughts on software engineering and technology.
+Personal site — Bits & Peace. Built with Jekyll, hosted on GitHub Pages.
 
-## Features
+## Local development
 
-- Clean, minimalistic design
-- Responsive layout
-- Blog section for sharing thoughts and experiences
-- About page with skills and experience
-- Contact section with social links
+Requires Ruby 3.3.0 via chruby:
 
-## Technology Stack
-
-- Jekyll - Static site generator
-- GitHub Pages - Hosting
-- HTML5/CSS3 - Frontend
-- Markdown - Content writing
-
-## Local Development
-
-1. Install Ruby and Jekyll
 ```bash
-gem install bundler jekyll
-```
-
-2. Clone the repository
-```bash
-git clone https://github.com/chinmayb/chinmayb.github.io.git
-cd chinmayb.github.io
-```
-
-3. Install dependencies
-```bash
+source /opt/homebrew/opt/chruby/share/chruby/chruby.sh
+chruby ruby-3.3.0
 bundle install
 ```
 
-4. Run the development server
 ```bash
-bundle exec jekyll serve
+make serve        # start dev server at http://localhost:4000
 ```
 
-5. Visit `http://localhost:4000` in your browser
+## Editing content
 
-## License
+All content lives in plain markdown files with YAML front matter.
 
-This project is open source and available under the [MIT License](LICENSE).
+```bash
+make reads        # _longreads/longreads.md   — long articles
+make books        # _longreads/books.md       — books (status: reading/read/want)
+make podcasts     # _podcasts/podcasts.md     — podcasts
+make repos        # _repos/repos.md           — repos
+make post         # create a new dated post interactively
+```
+
+### Adding a book
+
+Edit `_longreads/books.md`:
+
+```yaml
+books:
+  - title: Book Title
+    author: Author Name
+    status: reading   # reading | read | want
+    url: https://...
+```
+
+### Adding a long article
+
+Edit `_longreads/longreads.md`:
+
+```yaml
+articles:
+  - title: Article Title
+    url: https://...
+```
+
+### Adding a podcast
+
+Edit `_podcasts/podcasts.md`:
+
+```yaml
+podcasts:
+  - name: Podcast Name
+    source: spotify
+    url: https://...
+```
+
+### Adding a repo
+
+Edit `_repos/repos.md`:
+
+```yaml
+repos:
+  - name: repo-name
+    desc: Short description
+    lang: Go
+    url: https://github.com/chinmayb/repo-name
+```
+
+## Writing a post
+
+```bash
+make post
+```
+
+Or manually create `_posts/YYYY-MM-DD-title.md`:
+
+```yaml
+---
+layout: post
+title: "Post Title"
+date: 2025-01-01
+tags: [tag1, tag2]
+---
+
+Post content here.
+```
+
+## Stack
+
+- Jekyll 4.3 — static site generator
+- GitHub Pages — hosting
+- Claude warm dark theme — custom CSS, no frameworks
