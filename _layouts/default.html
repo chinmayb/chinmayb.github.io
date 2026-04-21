@@ -1,32 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.author }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
 </head>
 <body>
+  <div class="page">
     <header>
-        <div class="site-title">
-            <a href="/">{{ site.title }}</a>
-        </div>
-        <nav>
-            <a href="/" {% if page.url == "/" %}class="active"{% endif %}>Home</a>
-            <a href="/about" {% if page.url == "/about/" %}class="active"{% endif %}>About</a>
-        </nav>
+      <a class="site-name" href="/">{{ site.author }}</a>
+      <a class="about-btn" href="/about/">about</a>
     </header>
-    <div class="container">
-        <main>
-            {{ content }}
-        </main>
-        <aside class="sidebar">
-            {% if page.url == '/' or page.url == '/index.html' %}
-              {% include articles-widget.html %}
-              {% include podcasts-widget.html %}
-            {% endif %}
-        </aside>
-    </div>
+    <main>
+      {{ content }}
+    </main>
+    <footer>
+      <a href="https://github.com/{{ site.github_username }}">github</a>
+      <a href="#">linkedin</a>
+      <a href="https://substack.com/@chinmayabharadwaj/notes">substack</a>
+      <span>© {{ site.time | date: "%Y" }}</span>
+    </footer>
+  </div>
 </body>
 </html>

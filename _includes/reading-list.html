@@ -1,6 +1,8 @@
 {% assign longread_doc = site.longreads | where: "title", "Long Reads" | first %}
 {% if longread_doc %}
-  {% for item in longread_doc.articles limit: 3 %}
+  {% for item in longread_doc.articles %}
     <li><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a></li>
   {% endfor %}
+{% else %}
+  <li class="empty-state">No articles yet.</li>
 {% endif %}

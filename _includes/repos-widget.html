@@ -1,0 +1,12 @@
+{% assign repos_doc = site.repos | first %}
+{% if repos_doc %}
+  {% for repo in repos_doc.repos %}
+  <li>
+    <a href="{{ repo.url }}" target="_blank" rel="noopener">{{ repo.name }}</a>
+    {% if repo.desc %}<div class="repo-desc">{{ repo.desc }}</div>{% endif %}
+    {% if repo.lang %}<div class="repo-lang"><span class="dot"></span>{{ repo.lang }}</div>{% endif %}
+  </li>
+  {% endfor %}
+{% else %}
+  <p class="empty-state">No repos yet.</p>
+{% endif %}

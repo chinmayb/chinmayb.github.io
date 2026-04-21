@@ -5,50 +5,23 @@ permalink: /tags/
 ---
 
 <div class="tags-container">
-    <h1>All Tags</h1>
-    {% assign tags = site.tags | sort %}
-    {% if tags.size > 0 %}
-        {% for tag in tags %}
-        <div class="tag-section" id="{{ tag[0] | slugify }}">
-            <h2>#{{ tag[0] }}</h2>
-            <ul>
-                {% for post in tag[1] %}
-                <li>
-                    <span>{{ post.date | date: "%Y-%m-%d" }}</span>
-                    <a href="{{ post.url }}">{{ post.title }}</a>
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
+  <h1>All Tags</h1>
+  {% assign tags = site.tags | sort %}
+  {% if tags.size > 0 %}
+    {% for tag in tags %}
+    <div class="tag-section" id="{{ tag[0] | slugify }}">
+      <h2>#{{ tag[0] }}</h2>
+      <ul>
+        {% for post in tag[1] %}
+        <li>
+          <span>{{ post.date | date: "%Y-%m-%d" }}</span>
+          <a href="{{ post.url }}">{{ post.title }}</a>
+        </li>
         {% endfor %}
-    {% else %}
-        <p>No tags available.</p>
-    {% endif %}
+      </ul>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="empty-state">No tags yet.</p>
+  {% endif %}
 </div>
-
-<style>
-.tags-container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem;
-}
-
-.tag-section {
-    margin-bottom: 3rem;
-}
-
-.post-list {
-    list-style: none;
-    padding: 0;
-}
-
-.post-list li {
-    margin-bottom: 1rem;
-}
-
-.post-date {
-    color: #666;
-    font-size: 0.9rem;
-    margin-right: 1rem;
-}
-</style>

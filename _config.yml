@@ -26,7 +26,7 @@ description: >-
 baseurl: ""
 url: ""
 github_username: chinmayb
-linkedin_username: Chinmaya Bharadwaj
+linkedin_username: chinmayabharadwaj
 
 # Build settings
 theme: minima
@@ -62,8 +62,11 @@ plugins:
 # Longform reading list
 collections:
   longreads:
-    output: true
-    permalink: /longreads/:name/
+    output: false
+  podcasts:
+    output: false
+  repos:
+    output: false
 
 future: true
 include: ["tags.html"]

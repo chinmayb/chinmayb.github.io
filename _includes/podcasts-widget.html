@@ -1,6 +1,6 @@
-<div class="podcast-widget sidebar-card">
-  <h3>Podcasts</h3>
-  <ul>
-    <li><a href="https://open.spotify.com/show/7tyBxrqQYwQAFQPr6ACsMn" target="_blank" rel="noopener">Two by two</a></li>
-  </ul>
-</div>
+{% assign podcast_doc = site.podcasts | first %}
+{% if podcast_doc %}
+  {% for item in podcast_doc.podcasts limit: 2 %}
+    <li><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.name }}</a></li>
+  {% endfor %}
+{% endif %}

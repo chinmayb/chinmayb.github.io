@@ -1,0 +1,11 @@
+{% assign podcast_doc = site.podcasts | first %}
+{% if podcast_doc %}
+  {% for item in podcast_doc.podcasts %}
+    <li>
+      <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.name }}</a>
+      {% if item.source %}<span class="source">{{ item.source }}</span>{% endif %}
+    </li>
+  {% endfor %}
+{% else %}
+  <li class="empty-state">No podcasts yet.</li>
+{% endif %}

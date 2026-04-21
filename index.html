@@ -1,61 +1,169 @@
 ---
-layout: default
-title: Home
 ---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ site.author }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+</head>
+<body>
 
-<style>
-    .home {
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 2rem;
-    }
-
-    .hero {
-        text-align: center;
-        padding: 4rem 0;
-    }
-
-    .hero h1 {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-    }
-
-    .posts {
-        margin-top: 2rem;
-    }
-
-    .post-preview {
-        margin-bottom: 2rem;
-    }
-
-    .post-preview h3 {
-        margin: 0 0 0.5rem 0;
-    }
-
-    .post-preview time {
-        font-size: 0.9rem;
-        color: #666;
-    }
-
-    .post-preview p {
-        margin-bottom: 1rem;
-    }
-</style>
-
-<div class="home">
-    <section class="hero">
-        <h1>Bits & Peace</h1>
-        <p>Exploring technology, life thoughts & learnings one bit at a time.</p>
-    </section>
-
-    <section class="posts">
-        <h2>Latest Posts</h2>
-        {% for post in site.posts %}
-        <article class="post-preview">
-            <h3><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h3>
-            <time>{{ post.date | date: "%B %-d, %Y" }}</time>
-            <p>{{ post.excerpt | strip_html | truncatewords: 30 }}</p>
-        </article>
-        {% endfor %}
-    </section>
+<!-- About overlay -->
+<div class="about-overlay" id="about-overlay">
+  <div class="about-panel">
+    <button class="about-close" id="about-close">✕</button>
+    <div class="about-label">about</div>
+    <p>Staff Software Engineer working on distributed systems, cloud infrastructure, and performance.</p>
+    <p>I write about things I'm learning — OS internals, Kubernetes, and whatever else catches my attention.</p>
+    <p>Also into Carnatic & classical music, chess, piano, and badminton.</p>
+    <div class="skill-list">
+      <span class="skill-pill">Go</span>
+      <span class="skill-pill">Python</span>
+      <span class="skill-pill">Kubernetes</span>
+      <span class="skill-pill">Docker</span>
+      <span class="skill-pill">AWS</span>
+      <span class="skill-pill">Distributed Systems</span>
+      <span class="skill-pill">Performance</span>
+    </div>
+  </div>
 </div>
+
+<div class="page">
+
+  <header>
+    <span class="site-name">{{ site.author }}</span>
+    <span class="about-btn" id="about-btn">about</span>
+  </header>
+
+  <nav>
+    <button class="tab-btn active" data-tab="writing">Writing</button>
+    <button class="tab-btn" data-tab="reading">Reading</button>
+    <button class="tab-btn" data-tab="listening">Listening</button>
+    <button class="tab-btn" data-tab="repos">Repos</button>
+    <button class="tab-btn" data-tab="photos">Photos</button>
+  </nav>
+
+  <!-- Writing (default) -->
+  <section class="tab-section active" id="tab-writing">
+    <div class="landing-grid">
+      <ul class="post-list">
+        {% for post in site.posts %}
+        <li>
+          <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
+          <div class="post-meta">
+            {% if post.tags.size > 0 %}
+            <span class="tag">{{ post.tags | first }}</span>
+            {% endif %}
+            <span class="post-date">{{ post.date | date: "%b %Y" }}</span>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      <div class="lately">
+        <div class="lately-block">
+          <div class="section-label">reading</div>
+          <ul>{% include articles-widget.html %}</ul>
+        </div>
+        <div class="lately-block">
+          <div class="section-label">listening</div>
+          <ul>{% include podcasts-widget.html %}</ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Reading -->
+  <section class="tab-section" id="tab-reading">
+    <div class="sub-nav">
+      <button class="sub-btn active" data-sub="articles">long articles</button>
+      <button class="sub-btn" data-sub="books">books</button>
+    </div>
+    <div class="sub-section active" id="sub-articles">
+      <ul class="link-list">{% include reading-list.html %}</ul>
+    </div>
+    <div class="sub-section" id="sub-books">
+      {% include books-list.html %}
+    </div>
+  </section>
+
+  <!-- Listening -->
+  <section class="tab-section" id="tab-listening">
+    <ul class="link-list">{% include listening-list.html %}</ul>
+  </section>
+
+  <!-- Repos -->
+  <section class="tab-section" id="tab-repos">
+    <ul class="repo-list">{% include repos-widget.html %}</ul>
+  </section>
+
+  <!-- Photos -->
+  <section class="tab-section" id="tab-photos">
+    <p class="empty-state">Photos coming soon.</p>
+  </section>
+
+  <footer>
+    <a href="https://github.com/{{ site.github_username }}">github</a>
+    <a href="#">linkedin</a>
+    <a href="https://substack.com/@chinmayabharadwaj/notes">substack</a>
+    <span>© {{ site.time | date: "%Y" }}</span>
+  </footer>
+
+</div>
+
+<script>
+  // Main tab switching
+  var tabBtns = document.querySelectorAll('.tab-btn');
+  var tabSections = document.querySelectorAll('.tab-section');
+
+  tabBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      tabBtns.forEach(function(b) { b.classList.remove('active'); });
+      tabSections.forEach(function(s) { s.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // Reading sub-nav
+  var subBtns = document.querySelectorAll('.sub-btn');
+  var subSections = document.querySelectorAll('.sub-section');
+
+  subBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      subBtns.forEach(function(b) { b.classList.remove('active'); });
+      subSections.forEach(function(s) { s.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('sub-' + btn.dataset.sub).classList.add('active');
+    });
+  });
+
+  // About panel
+  var aboutBtn     = document.getElementById('about-btn');
+  var aboutOverlay = document.getElementById('about-overlay');
+  var aboutClose   = document.getElementById('about-close');
+
+  aboutBtn.addEventListener('click', function() {
+    aboutOverlay.classList.add('open');
+    aboutBtn.classList.add('active');
+  });
+
+  aboutClose.addEventListener('click', function() {
+    aboutOverlay.classList.remove('open');
+    aboutBtn.classList.remove('active');
+  });
+
+  aboutOverlay.addEventListener('click', function(e) {
+    if (e.target === aboutOverlay) {
+      aboutOverlay.classList.remove('open');
+      aboutBtn.classList.remove('active');
+    }
+  });
+</script>
+
+</body>
+</html>

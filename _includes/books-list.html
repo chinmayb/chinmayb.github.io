@@ -1,0 +1,51 @@
+{% assign books_doc = site.longreads | where: "title", "Books" | first %}
+{% if books_doc %}
+  {% assign reading_books = books_doc.books | where: "status", "reading" %}
+  {% assign read_books    = books_doc.books | where: "status", "read" %}
+  {% assign want_books    = books_doc.books | where: "status", "want" %}
+
+  {% if reading_books.size > 0 %}
+  <div class="book-group">
+    <div class="book-group-label">currently reading</div>
+    <ul class="link-list">
+      {% for book in reading_books %}
+      <li>
+        <a href="{{ book.url }}" target="_blank" rel="noopener">{{ book.title }}</a>
+        {% if book.author %}<span class="source">{{ book.author }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if read_books.size > 0 %}
+  <div class="book-group">
+    <div class="book-group-label">read</div>
+    <ul class="link-list">
+      {% for book in read_books %}
+      <li>
+        <a href="{{ book.url }}" target="_blank" rel="noopener">{{ book.title }}</a>
+        {% if book.author %}<span class="source">{{ book.author }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if want_books.size > 0 %}
+  <div class="book-group">
+    <div class="book-group-label">want to read</div>
+    <ul class="link-list">
+      {% for book in want_books %}
+      <li>
+        <a href="{{ book.url }}" target="_blank" rel="noopener">{{ book.title }}</a>
+        {% if book.author %}<span class="source">{{ book.author }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+{% else %}
+  <p class="empty-state">No books yet.</p>
+{% endif %}
