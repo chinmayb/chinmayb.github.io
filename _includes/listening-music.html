@@ -1,0 +1,15 @@
+{% assign listen_doc = site.podcasts | first %}
+{% if listen_doc.music.size > 0 %}
+  {% for item in listen_doc.music %}
+  <li>
+    {% if item.url and item.url != "" %}
+      <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+    {% else %}
+      <span>{{ item.title }}</span>
+    {% endif %}
+    {% if item.artist %}<span class="source">{{ item.artist }}</span>{% endif %}
+  </li>
+  {% endfor %}
+{% else %}
+  <li class="empty-state">No favourites yet.</li>
+{% endif %}

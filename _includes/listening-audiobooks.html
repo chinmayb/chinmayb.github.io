@@ -1,0 +1,15 @@
+{% assign listen_doc = site.podcasts | first %}
+{% if listen_doc.audiobooks.size > 0 %}
+  {% for item in listen_doc.audiobooks %}
+  <li>
+    {% if item.url and item.url != "" %}
+      <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+    {% else %}
+      <span>{{ item.title }}</span>
+    {% endif %}
+    {% if item.author %}<span class="source">{{ item.author }}</span>{% endif %}
+  </li>
+  {% endfor %}
+{% else %}
+  <li class="empty-state">No audiobooks yet.</li>
+{% endif %}

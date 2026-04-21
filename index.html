@@ -93,7 +93,20 @@
 
   <!-- Listening -->
   <section class="tab-section" id="tab-listening">
-    <ul class="link-list">{% include listening-list.html %}</ul>
+    <div class="sub-nav">
+      <button class="sub-btn active" data-sub="podcasts">podcasts</button>
+      <button class="sub-btn" data-sub="audiobooks">audiobooks</button>
+      <button class="sub-btn" data-sub="music">fav music</button>
+    </div>
+    <div class="sub-section active" id="sub-podcasts">
+      <ul class="link-list">{% include listening-list.html %}</ul>
+    </div>
+    <div class="sub-section" id="sub-audiobooks">
+      <ul class="link-list">{% include listening-audiobooks.html %}</ul>
+    </div>
+    <div class="sub-section" id="sub-music">
+      <ul class="link-list">{% include listening-music.html %}</ul>
+    </div>
   </section>
 
   <!-- Repos -->
@@ -129,14 +142,12 @@
     });
   });
 
-  // Reading sub-nav
-  var subBtns = document.querySelectorAll('.sub-btn');
-  var subSections = document.querySelectorAll('.sub-section');
-
-  subBtns.forEach(function(btn) {
+  // Sub-nav (Reading + Listening) — scoped to parent tab section
+  document.querySelectorAll('.sub-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      subBtns.forEach(function(b) { b.classList.remove('active'); });
-      subSections.forEach(function(s) { s.classList.remove('active'); });
+      var section = btn.closest('.tab-section');
+      section.querySelectorAll('.sub-btn').forEach(function(b) { b.classList.remove('active'); });
+      section.querySelectorAll('.sub-section').forEach(function(s) { s.classList.remove('active'); });
       btn.classList.add('active');
       document.getElementById('sub-' + btn.dataset.sub).classList.add('active');
     });

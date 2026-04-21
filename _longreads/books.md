@@ -5,10 +5,10 @@ books:
     author: Martin Kleppmann
     status: reading
     url: https://dataintensive.net/
-  - title: The Pragmatic Programmer
-    author: Andy Hunt & Dave Thomas
+  - title: Half Lion
+    author: Vinay Sitapati
     status: read
-    url: https://pragprog.com/titles/tpp20/the-pragmatic-programmer-20th-anniversary-edition/
+    url: https://www.amazon.in/Half-Lion-Narasimha-Transformed-India/dp/0670088226 
   - title: "The Staff Engineer's Path"
     author: Tanya Reilly
     status: want

@@ -557,7 +557,10 @@ footer a:hover { color: var(--text); }
 @media (max-width: 600px) {
   .page { padding: 2rem 1.2rem 4rem; }
 
-  .landing-grid { grid-template-columns: 1fr; }
+  .landing-grid {
+    grid-template-columns: 1fr;
+    row-gap: 0;
+  }
 
   .lately {
     border-left: none;
@@ -568,6 +571,7 @@ footer a:hover { color: var(--text); }
   }
 
   nav { gap: 1.2rem; overflow-x: auto; }
+  nav button { white-space: nowrap; flex-shrink: 0; }
 
   .about-panel { width: 100vw; }
 }
