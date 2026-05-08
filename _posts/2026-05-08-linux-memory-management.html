@@ -1,0 +1,1532 @@
+---
+layout: none
+title: "Linux Virtual Memory Internals"
+date: 2026-05-08 12:00:00 +0530
+categories: general
+tags: [OS, linux, memory, learning]
+permalink: /linux-memory-management/
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Linux VM Internals — Virtual Memory · MMU · TLB · Cache · RAM · Swap · Disk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700;800&family=Major+Mono+Display&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#06080a;
+    --bg-2:#0b1014;
+    --grid:#10181f;
+    --line:#1c2832;
+    --ink:#cfe5d9;
+    --dim:#5a7281;
+    --phos:#3ef0a0;        /* phosphor green - hits */
+    --phos-d:#0e8a55;
+    --amber:#ffb547;       /* amber - misses / fault */
+    --amber-d:#a06820;
+    --red:#ff5468;         /* page fault / disk */
+    --red-d:#7a1f2c;
+    --blue:#5ec8ff;        /* virtual addr */
+    --blue-d:#1d6a96;
+    --violet:#b78bff;      /* swap */
+    --violet-d:#5a3a8a;
+    --paper:#e9efe6;
+
+    /* surface variables — used by elements that change tone */
+    --panel-bg-a: rgba(11,16,20,0.7);
+    --panel-bg-b: rgba(6,8,10,0.85);
+    --canvas-glow-a: rgba(94,200,255,0.05);
+    --canvas-glow-b: rgba(183,139,255,0.05);
+    --statusbar-bg: rgba(0,0,0,0.3);
+    --trace-bg: rgba(0,0,0,0.35);
+
+    /* block surface variables (so SVG <rect>s using these adapt) */
+    --blk-fill: #0b1218;
+    --pte-bg: #0a1419;
+    --pte-present: #0e2620;
+    --pte-swapped: #1c1230;
+    --pte-invalid: #1a0f12;
+    --frame-bg: #0a1218;
+    --frame-used: #0e2620;
+    --frame-dirty: #2a1d0a;
+    --frame-swap: #1a0f2a;
+
+    /* gradient stops referenced by url(#cpuGrad) etc. — flipped via JS */
+  }
+
+  /* ====================== DAY THEME ====================== */
+  /* Architectural-blueprint / engineering paper aesthetic.
+     Warm cream paper, ink lines, restrained color accents. */
+  :root[data-theme="day"]{
+    --bg:#f1ece0;             /* warm cream paper */
+    --bg-2:#e6dfcd;
+    --grid:#d6cdb5;           /* faint grid lines on paper */
+    --line:#9a8d6f;           /* ink-brown lines */
+    --ink:#1f2933;            /* dark ink for body text */
+    --dim:#6b6452;            /* muted ink for sub-labels */
+    --phos:#0f8a4a;           /* deep emerald — hits */
+    --phos-d:#1d5a36;
+    --amber:#b86f0e;          /* burnt amber — misses */
+    --amber-d:#7a4604;
+    --red:#b21d2c;            /* deep crimson — fault */
+    --red-d:#6c0d18;
+    --blue:#1d4f8b;           /* navy blueprint — VA */
+    --blue-d:#0f3360;
+    --violet:#5a3a8a;         /* aubergine — swap */
+    --violet-d:#3a2360;
+    --paper:#1a1f26;          /* on-paper text uses ink */
+
+    --panel-bg-a: rgba(255,251,238,0.8);
+    --panel-bg-b: rgba(245,238,222,0.9);
+    --canvas-glow-a: rgba(29,79,139,0.06);
+    --canvas-glow-b: rgba(90,58,138,0.05);
+    --statusbar-bg: rgba(214,205,181,0.45);
+    --trace-bg: rgba(255,251,238,0.7);
+
+    --blk-fill: #f8f3e3;
+    --pte-bg: #f3ecd6;
+    --pte-present: #d9e8d2;       /* pale green wash */
+    --pte-swapped: #e3d9ec;       /* pale violet wash */
+    --pte-invalid: #f0d6d6;       /* pale rose wash */
+    --frame-bg: #f3ecd6;
+    --frame-used: #d4e6cb;
+    --frame-dirty: #f0e0bd;
+    --frame-swap: #e0d0ee;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{background:var(--bg); color:var(--ink); font-family:'JetBrains Mono',monospace; overflow-x:hidden}
+  body{
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(62,240,160,0.06), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 90% 110%, rgba(255,181,71,0.05), transparent 60%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+    min-height:100vh;
+    padding:24px 28px 60px;
+    transition: background 0.4s ease, color 0.4s ease;
+  }
+
+  /* day-mode body — drop the green/amber atmospheric glows; use cool blueprint wash */
+  :root[data-theme="day"] body{
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(29,79,139,0.07), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 90% 110%, rgba(184,111,14,0.05), transparent 60%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  }
+
+  /* CRT scanlines overlay — only in night mode */
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(255,255,255,0.012) 0 1px,
+      transparent 1px 3px
+    );
+    pointer-events:none; z-index:1000; mix-blend-mode:overlay;
+    transition: opacity 0.4s ease;
+  }
+  :root[data-theme="day"] body::before{ opacity:0; }
+  /* subtle grid */
+  body::after{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 30%, transparent 80%);
+    opacity:0.35;
+  }
+
+  /* Header */
+  .meta{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:18px;
+    position:relative; z-index:2;
+    flex-wrap:wrap; gap:14px;
+  }
+  .brand{
+    font-family:'Major Mono Display', monospace;
+    font-size: clamp(22px, 3.2vw, 38px);
+    letter-spacing:0.02em;
+    color:var(--paper);
+    line-height:1;
+  }
+  .brand .accent{ color:var(--phos); }
+  .brand .small{ display:block; font-family:'JetBrains Mono'; font-weight:300;
+    font-size:11px; letter-spacing:0.32em; color:var(--dim); margin-top:8px; text-transform:uppercase}
+  .meta-right{ text-align:right; font-size:11px; letter-spacing:0.18em; color:var(--dim); text-transform:uppercase }
+  .meta-right b{ color:var(--phos); font-weight:500 }
+  .blink{ animation: blink 1.05s step-start infinite; }
+  @keyframes blink{ 50%{opacity:0} }
+
+  /* Controls */
+  .controls{
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+    margin-bottom:18px; position:relative; z-index:3;
+  }
+  .ctrl{
+    background:transparent; border:1px solid var(--line); color:var(--ink);
+    font-family:inherit; font-size:11px; letter-spacing:0.16em; text-transform:uppercase;
+    padding:9px 14px; cursor:pointer; transition:all .18s;
+    display:inline-flex; align-items:center; gap:8px;
+  }
+  .ctrl:hover{ border-color:var(--phos); color:var(--phos); background:rgba(62,240,160,0.04) }
+  .ctrl.active{ border-color:var(--phos); color:var(--bg); background:var(--phos); }
+  .ctrl .dot{ width:6px; height:6px; border-radius:50%; background:currentColor }
+  .ctrl-group{ display:flex; gap:0; border:1px solid var(--line) }
+  .ctrl-group .ctrl{ border:none; border-right:1px solid var(--line) }
+  .ctrl-group .ctrl:last-child{ border-right:none }
+
+  .speed{
+    margin-left:auto; display:flex; align-items:center; gap:10px;
+    font-size:10px; letter-spacing:0.18em; color:var(--dim); text-transform:uppercase;
+  }
+  .speed input{ accent-color:var(--phos); width:120px }
+
+  /* Layout: diagram + sidebar */
+  .stage{
+    display:grid;
+    grid-template-columns: minmax(0,1fr) 320px;
+    gap:18px;
+    position:relative; z-index:2;
+  }
+  @media (max-width: 1100px){ .stage{ grid-template-columns: 1fr } }
+
+  .canvas-wrap{
+    background: linear-gradient(180deg, var(--panel-bg-a), var(--panel-bg-b));
+    border:1px solid var(--line);
+    border-radius:2px;
+    position:relative;
+    overflow:hidden;
+    transition: background 0.4s ease, border-color 0.4s ease;
+  }
+  .canvas-wrap::before{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 0%, var(--canvas-glow-a), transparent 60%),
+      radial-gradient(ellipse 50% 40% at 80% 100%, var(--canvas-glow-b), transparent 60%);
+  }
+  .corner{ position:absolute; width:14px; height:14px; border:1px solid var(--phos); opacity:0.6 }
+  .corner.tl{ top:8px; left:8px; border-right:none; border-bottom:none }
+  .corner.tr{ top:8px; right:8px; border-left:none; border-bottom:none }
+  .corner.bl{ bottom:8px; left:8px; border-right:none; border-top:none }
+  .corner.br{ bottom:8px; right:8px; border-left:none; border-top:none }
+
+  svg{ display:block; width:100%; height:auto }
+
+  /* Sidebar */
+  .sidebar{ display:flex; flex-direction:column; gap:14px }
+  .panel{
+    border:1px solid var(--line); padding:14px;
+    background: linear-gradient(180deg, var(--panel-bg-a), var(--panel-bg-b));
+    position:relative;
+    transition: background 0.4s ease, border-color 0.4s ease;
+  }
+  .panel h3{
+    font-size:10px; letter-spacing:0.28em; text-transform:uppercase;
+    color:var(--dim); margin-bottom:10px; font-weight:500;
+    display:flex; align-items:center; gap:8px;
+  }
+  .panel h3::before{ content:""; width:6px; height:6px; background:var(--phos); display:inline-block }
+
+  .legend-row{
+    display:flex; align-items:center; gap:10px; font-size:11px; padding:5px 0;
+    border-bottom:1px dashed var(--line);
+  }
+  .legend-row:last-child{ border-bottom:none }
+  .legend-row .swatch{ width:14px; height:14px; flex:0 0 14px; border:1px solid rgba(255,255,255,0.1) }
+  .legend-row .lbl{ color:var(--ink); flex:1 }
+  .legend-row .v{ color:var(--dim); font-size:10px; letter-spacing:0.1em }
+
+  /* Trace log */
+  #trace{
+    height:280px; overflow-y:auto;
+    font-size:11px; line-height:1.55;
+    background:var(--trace-bg);
+    border:1px solid var(--line);
+    padding:10px 12px;
+    transition: background 0.4s ease, border-color 0.4s ease;
+  }
+  #trace::-webkit-scrollbar{ width:6px }
+  #trace::-webkit-scrollbar-thumb{ background:var(--line) }
+  #trace .line{ display:flex; gap:8px; padding:1px 0; opacity:0; animation: in .25s forwards }
+  @keyframes in{ to{ opacity:1 } }
+  #trace .ts{ color:var(--dim); flex:0 0 auto }
+  #trace .tag{ font-weight:700; flex:0 0 auto; min-width:48px }
+  .t-hit{ color:var(--phos) }
+  .t-miss{ color:var(--amber) }
+  .t-fault{ color:var(--red) }
+  .t-info{ color:var(--blue) }
+  .t-swap{ color:var(--violet) }
+  .t-ok{ color:var(--phos) }
+  #trace .msg{ color:var(--ink) }
+  #trace .addr{ color:var(--blue); font-weight:500 }
+
+  /* Stat tiles */
+  .stats{ display:grid; grid-template-columns:1fr 1fr; gap:6px }
+  .stat{
+    border:1px solid var(--line); padding:8px 10px;
+    display:flex; flex-direction:column; gap:2px;
+  }
+  .stat .k{ font-size:9px; letter-spacing:0.22em; color:var(--dim); text-transform:uppercase }
+  .stat .v{ font-size:18px; font-weight:700; color:var(--paper); font-variant-numeric: tabular-nums }
+  .stat.hit .v{ color:var(--phos) }
+  .stat.miss .v{ color:var(--amber) }
+  .stat.fault .v{ color:var(--red) }
+  .stat.swap .v{ color:var(--violet) }
+
+  /* Explainer footer */
+  .explain{
+    margin-top:22px; padding:18px;
+    border:1px solid var(--line);
+    background: linear-gradient(180deg, var(--panel-bg-a), var(--panel-bg-b));
+    position:relative; z-index:2;
+    font-size:12px; line-height:1.7;
+    column-count:2; column-gap:32px; column-rule:1px dashed var(--line);
+    transition: background 0.4s ease, border-color 0.4s ease;
+  }
+  @media (max-width:900px){ .explain{ column-count:1 } }
+  .explain h4{
+    font-family:'Major Mono Display', monospace;
+    font-size:13px; letter-spacing:0.04em;
+    color:var(--phos); margin: 0 0 6px;
+    break-after: avoid;
+  }
+  .explain h4:not(:first-child){ margin-top:14px }
+  .explain p{ color:var(--dim); margin-bottom:6px }
+  .explain b{ color:var(--ink); font-weight:500 }
+  .explain code{ color:var(--blue); font-size:11px }
+
+  /* Example cards */
+  .ex-card{
+    column-span: all;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+    border-left-width: 3px;
+    border-left-style: solid;
+    border-width: 1px;
+    border-style: solid;
+    transition: background 0.4s ease, border-color 0.4s ease;
+  }
+  .ex-card.hit  { background:rgba(62,240,160,0.04);  border-color:var(--phos-d);   border-left-color:var(--phos) }
+  .ex-card.fault{ background:rgba(255,84,104,0.04);  border-color:var(--red-d);    border-left-color:var(--red) }
+  .ex-card.swap { background:rgba(183,139,255,0.04); border-color:var(--violet-d); border-left-color:var(--violet) }
+  :root[data-theme="day"] .ex-card.hit  { background:rgba(15,138,74,0.05) }
+  :root[data-theme="day"] .ex-card.fault{ background:rgba(178,29,44,0.05) }
+  :root[data-theme="day"] .ex-card.swap { background:rgba(90,58,138,0.05) }
+  .ex-label{
+    font-size:10px; letter-spacing:0.28em; text-transform:uppercase;
+    margin-bottom:10px; font-weight:700;
+  }
+  .ex-card.hit   .ex-label{ color:var(--phos) }
+  .ex-card.fault .ex-label{ color:var(--red) }
+  .ex-card.swap  .ex-label{ color:var(--violet) }
+  .ex-card pre{
+    font-family:'JetBrains Mono',monospace; font-size:12px;
+    color:var(--paper); margin-bottom:12px; line-height:1.7;
+    background:rgba(0,0,0,0.18); padding:10px 12px;
+    border:1px solid var(--line); overflow-x:auto;
+  }
+  :root[data-theme="day"] .ex-card pre{
+    background:rgba(255,255,255,0.5);
+  }
+  .ex-card pre .cm{ color:var(--dim) }   /* comment */
+  .ex-card p{ color:var(--dim); margin-bottom:8px; font-size:12px; line-height:1.65 }
+  .ex-card p:last-child{ margin-bottom:0 }
+  .ex-card .tag-hit  { color:var(--phos) }
+  .ex-card .tag-miss { color:var(--amber) }
+  .ex-card .tag-fault{ color:var(--red) }
+  .ex-card .tag-swap { color:var(--violet) }
+  .ex-tip{
+    display:inline-block; background:rgba(62,240,160,0.08);
+    border:1px solid var(--phos-d); padding:2px 8px; font-size:10px;
+    letter-spacing:0.1em; color:var(--phos); margin-right:4px;
+  }
+  .ex-card.swap .ex-tip{ background:rgba(183,139,255,0.08); border-color:var(--violet-d); color:var(--violet) }
+  .section-title{
+    column-span:all;
+    color:var(--paper); font-family:'Major Mono Display',monospace;
+    font-size:15px; letter-spacing:0.06em;
+    margin-bottom:16px; border-bottom:1px solid var(--line); padding-bottom:10px;
+  }
+
+  /* SVG element shared classes */
+  .blk-fill{ fill: var(--blk-fill); transition: fill 0.4s ease }
+  .blk-stroke{ stroke:var(--line); stroke-width:1; fill:none }
+  .blk-label{ font-family:'JetBrains Mono'; font-weight:500; font-size:11px; fill:var(--paper); letter-spacing:0.08em }
+  .blk-sub{ font-family:'JetBrains Mono'; font-weight:300; font-size:9px; fill:var(--dim); letter-spacing:0.18em; text-transform:uppercase }
+  .blk-sub2{ font-family:'JetBrains Mono'; font-weight:400; font-size:9px; fill:var(--dim); letter-spacing:0.06em }
+  .pin{ fill:var(--phos) }
+  .wire{ fill:none; stroke:var(--line); stroke-width:1.2 }
+  .wire.active{ stroke:var(--phos); stroke-width:1.6; filter: drop-shadow(0 0 4px rgba(62,240,160,0.6)) }
+  .wire.miss{ stroke:var(--amber); filter: drop-shadow(0 0 4px rgba(255,181,71,0.6)) }
+  .wire.fault{ stroke:var(--red); filter: drop-shadow(0 0 5px rgba(255,84,104,0.7)) }
+  .wire.swap{ stroke:var(--violet); filter: drop-shadow(0 0 4px rgba(183,139,255,0.6)) }
+
+  /* Highlight pulse on blocks */
+  .blk{ transition: filter .25s }
+  .blk.lit-hit > rect:first-child{ stroke:var(--phos); stroke-width:1.4; filter: drop-shadow(0 0 8px rgba(62,240,160,0.55)) }
+  .blk.lit-miss > rect:first-child{ stroke:var(--amber); stroke-width:1.4; filter: drop-shadow(0 0 8px rgba(255,181,71,0.55)) }
+  .blk.lit-fault > rect:first-child{ stroke:var(--red); stroke-width:1.4; filter: drop-shadow(0 0 9px rgba(255,84,104,0.6)) }
+  .blk.lit-swap > rect:first-child{ stroke:var(--violet); stroke-width:1.4; filter: drop-shadow(0 0 8px rgba(183,139,255,0.55)) }
+  .blk.lit-info > rect:first-child{ stroke:var(--blue); stroke-width:1.4; filter: drop-shadow(0 0 8px rgba(94,200,255,0.55)) }
+
+  /* page table grid cells */
+  .pte{ fill: var(--pte-bg); stroke:var(--line); stroke-width:0.8; transition: fill 0.4s ease }
+  .pte.present{ fill: var(--pte-present) }
+  .pte.swapped{ fill: var(--pte-swapped) }
+  .pte.invalid{ fill: var(--pte-invalid) }
+
+  /* RAM / disk frames */
+  .frame{ fill: var(--frame-bg); stroke:var(--line); transition: fill 0.4s ease }
+  .frame.used{ fill: var(--frame-used); stroke:rgba(62,240,160,0.4) }
+  .frame.dirty{ fill: var(--frame-dirty); stroke:rgba(255,181,71,0.5) }
+  .frame.swap{ fill: var(--frame-swap); stroke:rgba(183,139,255,0.5) }
+  :root[data-theme="day"] .frame.used{ stroke:rgba(15,138,74,0.5) }
+  :root[data-theme="day"] .frame.dirty{ stroke:rgba(184,111,14,0.55) }
+  :root[data-theme="day"] .frame.swap{ stroke:rgba(90,58,138,0.5) }
+
+  /* SVG gradient stops — controlled via CSS so they swap with the theme */
+  .grad-cpu-a{ stop-color:#0e1c24 }
+  .grad-cpu-b{ stop-color:#06101a }
+  .grad-ram-a{ stop-color:#0c1a14 }
+  .grad-ram-b{ stop-color:#06120a }
+  .grad-disk-a{ stop-color:#1a0a10 }
+  .grad-disk-b{ stop-color:#0a0508 }
+
+  :root[data-theme="day"] .grad-cpu-a{ stop-color:#fbf6e8 }
+  :root[data-theme="day"] .grad-cpu-b{ stop-color:#ede4cc }
+  :root[data-theme="day"] .grad-ram-a{ stop-color:#eaf3df }
+  :root[data-theme="day"] .grad-ram-b{ stop-color:#d6e6c5 }
+  :root[data-theme="day"] .grad-disk-a{ stop-color:#f4e2e1 }
+  :root[data-theme="day"] .grad-disk-b{ stop-color:#e6c8c5 }
+
+  /* Packet (data traveling) */
+  .packet{
+    filter: drop-shadow(0 0 6px currentColor);
+  }
+
+  /* CPU pulse */
+  @keyframes cpuPulse{
+    0%,100%{ opacity:0.3 }
+    50%{ opacity:1 }
+  }
+  .cpu-pulse circle{ animation: cpuPulse 2s ease-in-out infinite }
+
+  /* tlb cell flip animation */
+  @keyframes cellFlash{
+    0%{ fill: var(--phos); }
+    100%{ fill: var(--pte-present) }
+  }
+  .flash-hit{ animation: cellFlash .9s ease-out }
+  @keyframes cellFlashMiss{
+    0%{ fill: var(--amber); }
+    100%{ fill: var(--pte-bg) }
+  }
+  .flash-miss{ animation: cellFlashMiss .9s ease-out }
+
+  /* PTE row flip: rose (invalid) → bright green pulse → green (present)  */
+  @keyframes pteFlip{
+    0%   { fill: var(--pte-invalid); }
+    35%  { fill: var(--phos);        }
+    100% { fill: var(--pte-present); }
+  }
+  .flash-flip{ animation: pteFlip 1.2s ease-out forwards }
+
+  /* tag */
+  .tag-pill{
+    display:inline-block; padding:2px 8px; font-size:9px; letter-spacing:0.18em;
+    text-transform:uppercase; border:1px solid currentColor;
+  }
+  .key{ color:var(--phos); font-weight:700 }
+
+  /* Top status bar above SVG */
+  .statusbar{
+    display:flex; align-items:center; gap:14px; padding:8px 14px;
+    border-bottom:1px solid var(--line); font-size:10px;
+    letter-spacing:0.22em; text-transform:uppercase; color:var(--dim);
+    background:var(--statusbar-bg);
+    transition: background 0.4s ease;
+  }
+  .statusbar .pid{ color:var(--phos) }
+  .statusbar .addr{ color:var(--blue); letter-spacing:0.12em }
+  .statusbar .op{ color:var(--paper); margin-left:auto }
+  .statusbar .op b{ color:var(--phos) }
+
+  /* ====================== THEME TOGGLE ====================== */
+  .theme-toggle{
+    position:relative;
+    display:inline-flex; align-items:center;
+    background:transparent;
+    border:1px solid var(--line);
+    padding: 0;
+    cursor:pointer;
+    font-family:inherit;
+    color: var(--ink);
+    height: 28px;
+    width: 72px;
+    overflow:hidden;
+    transition: border-color .25s ease, background .25s ease;
+  }
+  .theme-toggle:hover{ border-color: var(--phos) }
+  .theme-toggle .track{
+    display:flex; align-items:center; justify-content:space-between;
+    width:100%; height:100%; padding:0 9px;
+    position:relative; z-index:2;
+  }
+  .theme-toggle .icon{
+    width:14px; height:14px; display:inline-flex; align-items:center; justify-content:center;
+    color: var(--dim);
+    transition: color .3s ease;
+  }
+  /* knob — slides between icons */
+  .theme-toggle .knob{
+    position:absolute;
+    top:3px; left:3px;
+    width:30px; height:20px;
+    background: linear-gradient(180deg, var(--phos), var(--phos-d));
+    border:1px solid var(--phos);
+    box-shadow: 0 0 6px rgba(62,240,160,0.45), inset 0 1px 0 rgba(255,255,255,0.18);
+    transition: transform .35s cubic-bezier(.7,-0.2,.3,1.2), background .35s ease, box-shadow .35s ease, border-color .35s ease;
+    z-index:1;
+  }
+  /* Night mode: knob covers moon (left). Day mode: knob covers sun (right). */
+  .theme-toggle[data-active="night"] .icon.moon{ color: var(--bg) }
+  .theme-toggle[data-active="day"]   .icon.sun{ color: var(--bg) }
+  .theme-toggle[data-active="day"] .knob{
+    transform: translateX(36px);
+    background: linear-gradient(180deg, #f4d35e, #b86f0e);
+    border-color: #b86f0e;
+    box-shadow: 0 0 6px rgba(244,211,94,0.6), inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+</style>
+</head>
+<body>
+
+<header class="meta">
+  <div class="brand">
+    Linux<span class="accent">::</span>VM<span class="accent">.</span>Internals
+    <span class="small">virtual memory · mmu · tlb · cache hierarchy · ram · swap · disk · page faults</span>
+  </div>
+  <div class="meta-right">
+    <button class="theme-toggle" id="themeToggle" data-active="night" aria-label="Toggle day/night mode" title="Toggle day/night mode">
+      <span class="knob" aria-hidden="true"></span>
+      <span class="track">
+        <span class="icon moon" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>
+        </span>
+        <span class="icon sun" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        </span>
+      </span>
+    </button>
+    <div style="margin-top:10px">
+      Session <b>0xA17F</b><br>
+      kernel 6.8.0-generic · x86_64 · 4 KiB pages<br>
+      <span class="blink">▮</span> live trace
+    </div>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <button class="ctrl" data-scenario="hit"><span class="dot" style="background:var(--phos)"></span>L1 TLB hit</button>
+    <button class="ctrl" data-scenario="l2hit"><span class="dot" style="background:#7ad6ff"></span>L2 TLB hit</button>
+    <button class="ctrl" data-scenario="walk"><span class="dot" style="background:var(--amber)"></span>Page-walk</button>
+    <button class="ctrl" data-scenario="minor"><span class="dot" style="background:#ffd07a"></span>Minor fault</button>
+    <button class="ctrl" data-scenario="major"><span class="dot" style="background:var(--red)"></span>Major fault (disk)</button>
+    <button class="ctrl" data-scenario="swap"><span class="dot" style="background:var(--violet)"></span>Swap-in</button>
+  </div>
+  <button class="ctrl" id="play">▶ AUTO</button>
+  <button class="ctrl" id="reset">↺ RESET</button>
+  <div class="speed">
+    speed <input type="range" id="speed" min="0.4" max="2.4" step="0.1" value="1"/>
+    <span id="speedv">1.0×</span>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="canvas-wrap">
+    <span class="corner tl"></span><span class="corner tr"></span>
+    <span class="corner bl"></span><span class="corner br"></span>
+    <div class="statusbar">
+      <span>PID <span class="pid" id="pid">2741</span></span>
+      <span>VA <span class="addr" id="va">0x00007ffe·a4c·018</span></span>
+      <span class="op">OP <b id="op">READ</b> · <span id="opdesc">awaiting trace…</span></span>
+    </div>
+    <svg viewBox="0 0 1200 720" preserveAspectRatio="xMidYMid meet" id="diagram" aria-label="Linux memory hierarchy">
+
+      <!-- DEFS: arrow markers and gradients -->
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--phos)"/>
+        </marker>
+        <marker id="am" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--amber)"/>
+        </marker>
+        <marker id="af" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--red)"/>
+        </marker>
+        <marker id="as" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--violet)"/>
+        </marker>
+        <marker id="ai" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--blue)"/>
+        </marker>
+        <marker id="adim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--line)"/>
+        </marker>
+
+        <linearGradient id="cpuGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" class="grad-cpu-a"/>
+          <stop offset="100%" class="grad-cpu-b"/>
+        </linearGradient>
+        <linearGradient id="ramGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" class="grad-ram-a"/>
+          <stop offset="100%" class="grad-ram-b"/>
+        </linearGradient>
+        <linearGradient id="diskGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" class="grad-disk-a"/>
+          <stop offset="100%" class="grad-disk-b"/>
+        </linearGradient>
+        <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="6" stroke="rgba(62,240,160,0.18)" stroke-width="1"/>
+        </pattern>
+      </defs>
+
+      <!-- =========================  WIRES (under everything) ========================= -->
+      <!-- CPU → L1 TLB -->
+      <path id="w-cpu-l1" class="wire" d="M 250,160 L 320,160" marker-end="url(#adim)"/>
+      <!-- L1 TLB → MMU (on hit, returns up; on miss, goes down to L2) -->
+      <path id="w-l1-mmu" class="wire" d="M 460,140 C 540,120 600,120 660,140" marker-end="url(#adim)"/>
+      <!-- L1 → L2 -->
+      <path id="w-l1-l2" class="wire" d="M 390,210 L 390,290" marker-end="url(#adim)"/>
+      <!-- L2 → MMU (hit return) -->
+      <path id="w-l2-mmu" class="wire" d="M 460,330 C 560,330 620,250 660,180" marker-end="url(#adim)"/>
+      <!-- L2 → Page Walker -->
+      <path id="w-l2-pw" class="wire" d="M 390,390 L 390,460" marker-end="url(#adim)"/>
+      <!-- Page Walker reads → Page Table in RAM (routes below RAM) -->
+      <path id="w-pw-pt" class="wire" d="M 460,500 C 510,610 660,615 815,560" marker-end="url(#adim)"/>
+      <!-- Page Walker → MMU (returns translation) -->
+      <path id="w-pw-mmu" class="wire" d="M 380,460 L 380,440 C 380,400 480,360 660,200" marker-end="url(#adim)"/>
+      <!-- MMU → L1 cache -->
+      <path id="w-mmu-l1c" class="wire" d="M 800,160 L 880,160" marker-end="url(#adim)"/>
+      <!-- L1c → L2c -->
+      <path id="w-l1c-l2c" class="wire" d="M 940,210 L 940,260" marker-end="url(#adim)"/>
+      <!-- L2c → L3c -->
+      <path id="w-l2c-l3c" class="wire" d="M 940,310 L 940,360" marker-end="url(#adim)"/>
+      <!-- L3c → RAM frames -->
+      <path id="w-l3c-ram" class="wire" d="M 940,410 C 940,440 850,440 800,470" marker-end="url(#adim)"/>
+      <!-- RAM ↔ Page table area (already covered) -->
+      <!-- RAM → Swap (kswapd) -->
+      <path id="w-ram-swap" class="wire" d="M 680,580 L 680,630" marker-end="url(#adim)"/>
+      <!-- Swap ↔ Disk -->
+      <path id="w-swap-disk" class="wire" d="M 880,660 L 990,660" marker-end="url(#adim)"/>
+      <!-- Disk → RAM (page-in via filesystem, routes over PT) -->
+      <path id="w-disk-ram" class="wire" d="M 990,580 C 950,580 940,440 880,440 C 830,440 810,460 800,470" marker-end="url(#adim)"/>
+      <!-- Page-fault trap from MMU to kernel (page-walker box) -->
+      <path id="w-mmu-fault" class="wire" d="M 740,210 C 700,260 600,260 460,460" marker-end="url(#adim)" stroke-dasharray="3 3"/>
+      <!-- Kernel allocation: MMU/kernel drops a request into the buddy allocator (DRAM) -->
+      <path id="w-mmu-ram" class="wire" d="M 770,210 C 770,300 600,380 660,460" marker-end="url(#adim)" stroke-dasharray="4 3"/>
+      <!-- RAM → Page Table: write the new PTE (install translation) -->
+      <path id="w-ram-pt" class="wire" d="M 790,470 C 810,455 815,470 820,475" marker-end="url(#adim)"/>
+
+      <!-- =========================  ZONE LABELS ========================= -->
+      <g class="blk-sub" font-size="9">
+        <text x="40" y="26">// USER SPACE</text>
+        <text x="40" y="402">// KERNEL SPACE</text>
+        <line x1="20" y1="392" x2="1180" y2="392" stroke="var(--line)" stroke-dasharray="2 6"/>
+      </g>
+
+      <!-- =========================  CPU CORE ========================= -->
+      <g id="blk-cpu" class="blk" transform="translate(40,90)">
+        <rect width="210" height="140" rx="2" class="blk-fill" fill="url(#cpuGrad)" stroke="var(--line)"/>
+        <rect x="0" y="0" width="210" height="18" fill="rgba(62,240,160,0.08)"/>
+        <text x="10" y="13" class="blk-sub">CPU CORE · ring 3</text>
+        <text x="10" y="42" class="blk-label" font-size="14">PROCESS PID 2741</text>
+        <text x="10" y="60" class="blk-sub2">mov eax, [rbx+0x18]</text>
+        <text x="10" y="76" class="blk-sub2">issues virtual address</text>
+        <!-- pulse cores -->
+        <g class="cpu-pulse">
+          <circle cx="30" cy="110" r="5" fill="var(--phos)"/>
+          <circle cx="50" cy="110" r="5" fill="var(--phos)" style="animation-delay:.4s"/>
+          <circle cx="70" cy="110" r="5" fill="var(--phos)" style="animation-delay:.8s"/>
+          <circle cx="90" cy="110" r="5" fill="var(--phos)" style="animation-delay:1.2s"/>
+        </g>
+        <text x="115" y="114" class="blk-sub2">cores · L1$ split</text>
+        <!-- VA bus -->
+        <rect x="170" y="58" width="40" height="14" fill="rgba(94,200,255,0.08)" stroke="var(--blue-d)"/>
+        <text x="190" y="68" text-anchor="middle" font-size="8" fill="var(--blue)" letter-spacing="0.1em">VA</text>
+      </g>
+
+      <!-- =========================  L1 TLB ========================= -->
+      <g id="blk-l1tlb" class="blk" transform="translate(320,90)">
+        <rect width="140" height="120" rx="2" class="blk-fill" stroke="var(--line)"/>
+        <rect x="0" y="0" width="140" height="18" fill="rgba(62,240,160,0.06)"/>
+        <text x="8" y="13" class="blk-sub">L1 TLB · per-core</text>
+        <text x="8" y="38" class="blk-label">L1 dTLB</text>
+        <text x="8" y="52" class="blk-sub2">64 entries · ~1 cycle</text>
+        <!-- 4x4 entries grid -->
+        <g id="l1tlb-grid" transform="translate(8,60)">
+          <!-- generated by JS friendly markup; static here -->
+          <g>
+            <!-- row 0 -->
+            <rect class="pte" x="0"  y="0" width="30" height="12"/>
+            <rect class="pte present" x="32" y="0" width="30" height="12"/>
+            <rect class="pte" x="64" y="0" width="30" height="12"/>
+            <rect class="pte present" x="96" y="0" width="30" height="12"/>
+            <rect class="pte" x="0"  y="14" width="30" height="12"/>
+            <rect class="pte" x="32" y="14" width="30" height="12"/>
+            <rect class="pte present" x="64" y="14" width="30" height="12"/>
+            <rect class="pte" x="96" y="14" width="30" height="12"/>
+            <rect class="pte" x="0"  y="28" width="30" height="12"/>
+            <rect class="pte present" x="32" y="28" width="30" height="12"/>
+            <rect class="pte" x="64" y="28" width="30" height="12"/>
+            <rect class="pte" x="96" y="28" width="30" height="12"/>
+            <rect class="pte present" x="0"  y="42" width="30" height="12" id="l1-target"/>
+            <rect class="pte" x="32" y="42" width="30" height="12"/>
+            <rect class="pte" x="64" y="42" width="30" height="12"/>
+            <rect class="pte present" x="96" y="42" width="30" height="12"/>
+          </g>
+        </g>
+      </g>
+
+      <!-- =========================  L2 TLB (STLB) ========================= -->
+      <g id="blk-l2tlb" class="blk" transform="translate(320,290)">
+        <rect width="140" height="105" rx="2" class="blk-fill" stroke="var(--line)"/>
+        <rect x="0" y="0" width="140" height="18" fill="rgba(94,200,255,0.05)"/>
+        <text x="8" y="13" class="blk-sub">L2 STLB · unified</text>
+        <text x="8" y="38" class="blk-label">L2 STLB</text>
+        <text x="8" y="52" class="blk-sub2">1.5K entries · ~7 cyc</text>
+        <g transform="translate(8,60)">
+          <rect class="pte present" x="0" y="0" width="22" height="10"/>
+          <rect class="pte" x="24" y="0" width="22" height="10"/>
+          <rect class="pte present" x="48" y="0" width="22" height="10"/>
+          <rect class="pte" x="72" y="0" width="22" height="10"/>
+          <rect class="pte present" x="96" y="0" width="22" height="10"/>
+          <rect class="pte" x="0" y="12" width="22" height="10"/>
+          <rect class="pte present" x="24" y="12" width="22" height="10" id="l2-target"/>
+          <rect class="pte" x="48" y="12" width="22" height="10"/>
+          <rect class="pte present" x="72" y="12" width="22" height="10"/>
+          <rect class="pte" x="96" y="12" width="22" height="10"/>
+          <rect class="pte" x="0" y="24" width="22" height="10"/>
+          <rect class="pte present" x="24" y="24" width="22" height="10"/>
+          <rect class="pte" x="48" y="24" width="22" height="10"/>
+          <rect class="pte present" x="72" y="24" width="22" height="10"/>
+          <rect class="pte" x="96" y="24" width="22" height="10"/>
+        </g>
+      </g>
+
+      <!-- =========================  MMU ========================= -->
+      <g id="blk-mmu" class="blk" transform="translate(660,90)">
+        <rect width="140" height="120" rx="2" class="blk-fill" fill="url(#cpuGrad)" stroke="var(--line)"/>
+        <rect x="0" y="0" width="140" height="18" fill="rgba(62,240,160,0.06)"/>
+        <text x="8" y="13" class="blk-sub">MMU · cr3</text>
+        <text x="8" y="38" class="blk-label">MMU</text>
+        <text x="8" y="54" class="blk-sub2">virt → phys</text>
+        <text x="8" y="70" class="blk-sub2">enforces R/W/X · NX</text>
+        <text x="8" y="86" class="blk-sub2">raises #PF on miss</text>
+        <!-- VA → PA conversion mini diagram -->
+        <g transform="translate(8,94)">
+          <rect width="56" height="14" fill="rgba(94,200,255,0.1)" stroke="var(--blue-d)"/>
+          <text x="28" y="10" text-anchor="middle" font-size="8" fill="var(--blue)">VA</text>
+          <line x1="58" y1="7" x2="68" y2="7" stroke="var(--phos)" marker-end="url(#ah)"/>
+          <rect x="68" y="0" width="56" height="14" fill="rgba(62,240,160,0.1)" stroke="var(--phos-d)"/>
+          <text x="96" y="10" text-anchor="middle" font-size="8" fill="var(--phos)">PA</text>
+        </g>
+      </g>
+
+      <!-- =========================  PAGE WALKER (HW) ========================= -->
+      <g id="blk-pw" class="blk" transform="translate(320,440)">
+        <rect width="140" height="80" rx="2" class="blk-fill" stroke="var(--line)"/>
+        <rect x="0" y="0" width="140" height="18" fill="rgba(255,181,71,0.07)"/>
+        <text x="8" y="13" class="blk-sub">HW PAGE WALKER</text>
+        <text x="8" y="38" class="blk-label" font-size="12">4-LEVEL WALK</text>
+        <text x="8" y="54" class="blk-sub2">PML4→PDPT→PD→PT</text>
+        <text x="8" y="68" class="blk-sub2">~100–250 cycles</text>
+      </g>
+
+      <!-- =========================  PAGE TABLE (in RAM) ========================= -->
+      <g id="blk-pt" class="blk" transform="translate(815,460)">
+        <rect width="160" height="120" rx="2" class="blk-fill" stroke="var(--line)"/>
+        <rect x="0" y="0" width="160" height="18" fill="rgba(94,200,255,0.06)"/>
+        <text x="8" y="13" class="blk-sub">PAGE TABLE · mm_struct</text>
+        <text x="8" y="38" class="blk-label">PROCESS PT</text>
+        <text x="8" y="52" class="blk-sub2">PTE flags: P|RW|US|D|A</text>
+        <!-- mini PTE list -->
+        <g transform="translate(8,62)">
+          <rect class="pte present" x="0" y="0" width="144" height="11" id="pte-target"/>
+          <rect class="pte present" x="0" y="13" width="144" height="11"/>
+          <rect class="pte invalid"  x="0" y="26" width="144" height="11" id="pte-anon"/>
+          <rect class="pte swapped"  x="0" y="39" width="144" height="11"/>
+          <text x="4" y="8.5" font-size="6.5" fill="var(--phos)" letter-spacing="0.04em">B210·0480 → frame 0x12E4 P|RW|U</text>
+          <text x="4" y="21.5" font-size="6.5" fill="var(--phos)" letter-spacing="0.04em">B210·0488 → frame 0x12E5 P|RW|U|D</text>
+          <text x="4" y="34.5" font-size="6.5" fill="var(--red)" letter-spacing="0.04em" id="pte-anon-text">B210·04A0 → not present (anon)</text>
+          <text x="4" y="47.5" font-size="6.5" fill="var(--violet)" letter-spacing="0.04em">B210·04B8 → swap_entry 0x008·1A2</text>
+        </g>
+      </g>
+
+      <!-- =========================  CPU CACHES (L1 / L2 / L3) ========================= -->
+      <g id="blk-l1c" class="blk" transform="translate(880,135)">
+        <rect width="120" height="75" rx="2" class="blk-fill" stroke="var(--line)"/>
+        <rect x="0" y="0" width="120" height="16" fill="rgba(62,240,160,0.05)"/>
+        <text x="8" y="11" class="blk-sub">L1 CACHE</text>
+        <text x="8" y="34" class="blk-label">L1d / L1i</text>
+        <text x="8" y="48" class="blk-sub2">32–48 KiB</text>
+        <text x="8" y="62" class="blk-sub2">~4 cycles</text>
+      </g>
+      <g id="blk-l2c" class="blk" transform="translate(880,235)">
+        <rect width="120" height="75" rx="2" class="blk-fill" stroke="var(--line)"/>
+        <rect x="0" y="0" width="120" height="16" fill="rgba(62,240,160,0.04)"/>
+        <text x="8" y="11" class="blk-sub">L2 CACHE</text>
+        <text x="8" y="34" class="blk-label">L2 unified</text>
+        <text x="8" y="48" class="blk-sub2">256 KiB – 1 MiB</text>
+        <text x="8" y="62" class="blk-sub2">~12 cycles</text>
+      </g>
+      <g id="blk-l3c" class="blk" transform="translate(880,335)">
+        <rect width="120" height="75" rx="2" class="blk-fill" stroke="var(--line)"/>
+        <rect x="0" y="0" width="120" height="16" fill="rgba(62,240,160,0.03)"/>
+        <text x="8" y="11" class="blk-sub">L3 CACHE / LLC</text>
+        <text x="8" y="34" class="blk-label">L3 shared</text>
+        <text x="8" y="48" class="blk-sub2">8–64 MiB</text>
+        <text x="8" y="62" class="blk-sub2">~40 cycles</text>
+      </g>
+
+      <!-- =========================  RAM ========================= -->
+      <g id="blk-ram" class="blk" transform="translate(560,460)">
+        <rect width="240" height="120" rx="2" fill="url(#ramGrad)" stroke="var(--line)"/>
+        <rect x="0" y="0" width="240" height="18" fill="rgba(62,240,160,0.06)"/>
+        <text x="8" y="13" class="blk-sub">DRAM · ~80–120 ns</text>
+        <text x="8" y="38" class="blk-label">PHYSICAL RAM (frames)</text>
+        <text x="8" y="52" class="blk-sub2">page cache · anon · slab</text>
+        <!-- frames grid 12x4 -->
+        <g id="ram-frames" transform="translate(8,58)">
+          <!-- generated 12x4 cells -->
+        </g>
+      </g>
+
+      <!-- =========================  SWAP (kernel) ========================= -->
+      <g id="blk-swap" class="blk" transform="translate(640,630)">
+        <rect width="240" height="60" rx="2" class="blk-fill" stroke="var(--line)"/>
+        <rect x="0" y="0" width="240" height="16" fill="rgba(183,139,255,0.08)"/>
+        <text x="8" y="11" class="blk-sub">kswapd · pageout · SWAP CACHE</text>
+        <text x="8" y="34" class="blk-label">swap subsystem</text>
+        <text x="8" y="50" class="blk-sub2">LRU eviction → /dev/dm-1</text>
+      </g>
+
+      <!-- =========================  DISK ========================= -->
+      <g id="blk-disk" class="blk" transform="translate(990,560)">
+        <rect width="170" height="130" rx="2" fill="url(#diskGrad)" stroke="var(--line)"/>
+        <rect x="0" y="0" width="170" height="18" fill="rgba(255,84,104,0.07)"/>
+        <text x="8" y="13" class="blk-sub">BLOCK DEVICE · NVMe</text>
+        <text x="8" y="38" class="blk-label">DISK</text>
+        <text x="8" y="52" class="blk-sub2">~50–150 µs · 4K block</text>
+        <!-- platters -->
+        <g transform="translate(85,90)">
+          <ellipse cx="0" cy="0" rx="48" ry="14" fill="none" stroke="var(--red-d)" stroke-width="1"/>
+          <ellipse cx="0" cy="0" rx="32" ry="9" fill="none" stroke="var(--red-d)" stroke-width="1" opacity=".7"/>
+          <ellipse cx="0" cy="0" rx="16" ry="4.5" fill="none" stroke="var(--red-d)" stroke-width="1" opacity=".5"/>
+          <circle cx="0" cy="0" r="2" fill="var(--red)"/>
+        </g>
+        <text x="85" y="118" text-anchor="middle" class="blk-sub2">/swapfile · ext4</text>
+      </g>
+
+      <!-- =========================  WIRE LABELS ========================= -->
+      <g class="blk-sub2" font-size="8">
+        <text x="285" y="155" text-anchor="end" fill="var(--blue)">VA</text>
+        <text x="540" y="135">hit → PA</text>
+        <text x="402" y="255">miss</text>
+        <text x="540" y="345">hit → PA</text>
+        <text x="402" y="435">miss → walk</text>
+        <text x="640" y="600">read PTE</text>
+        <text x="820" y="155">PA</text>
+        <text x="855" y="455" text-anchor="middle">cache-miss → DRAM</text>
+        <text x="700" y="615" text-anchor="middle">cold/inactive → reclaim</text>
+        <text x="935" y="675" text-anchor="middle">page-out</text>
+        <text x="920" y="430" text-anchor="middle">page-in (DMA)</text>
+        <text x="700" y="280" fill="var(--red)" opacity="0.7">#PF trap</text>
+      </g>
+
+      <!-- =========================  TRAVELING PACKET (animated) ========================= -->
+      <g id="packet" class="packet" style="display:none">
+        <circle r="6" fill="var(--phos)" />
+        <circle r="11" fill="none" stroke="var(--phos)" stroke-opacity="0.5"/>
+      </g>
+
+      <!-- secondary packet for return / chained -->
+      <g id="packet2" class="packet" style="display:none">
+        <circle r="5" fill="var(--blue)" />
+      </g>
+
+      <!-- Frame-allocation halo (positioned over the target RAM frame in JS) -->
+      <g id="alloc-halo" style="display:none; pointer-events:none">
+        <g>
+          <animate attributeName="opacity" values="0;1;1;0.6;0" dur="1.6s" repeatCount="1"/>
+          <rect x="-3" y="-3" width="24" height="16" rx="2" fill="none"
+                stroke="var(--phos)" stroke-width="1.5"
+                style="filter: drop-shadow(0 0 6px var(--phos))"/>
+          <text id="alloc-halo-text" x="9" y="-7" text-anchor="middle"
+                font-family="JetBrains Mono" font-size="8" font-weight="700"
+                fill="var(--phos)" letter-spacing="0.08em">+ frame 0x12F1</text>
+        </g>
+      </g>
+
+    </svg>
+  </div>
+
+  <aside class="sidebar">
+    <div class="panel">
+      <h3>Live Counters</h3>
+      <div class="stats">
+        <div class="stat hit"><span class="k">L1 TLB hit</span><span class="v" id="c-l1">0</span></div>
+        <div class="stat hit"><span class="k">L2 TLB hit</span><span class="v" id="c-l2">0</span></div>
+        <div class="stat miss"><span class="k">walks</span><span class="v" id="c-walk">0</span></div>
+        <div class="stat fault"><span class="k">major #PF</span><span class="v" id="c-major">0</span></div>
+        <div class="stat fault"><span class="k">minor #PF</span><span class="v" id="c-minor">0</span></div>
+        <div class="stat swap"><span class="k">swap-in</span><span class="v" id="c-swap">0</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Legend</h3>
+      <div class="legend-row"><span class="swatch" style="background:var(--phos)"></span><span class="lbl">Fast path / hit</span><span class="v">~1–12 cyc</span></div>
+      <div class="legend-row"><span class="swatch" style="background:var(--blue)"></span><span class="lbl">Virtual address</span><span class="v">VA</span></div>
+      <div class="legend-row"><span class="swatch" style="background:var(--amber)"></span><span class="lbl">TLB miss / walk</span><span class="v">~100 cyc</span></div>
+      <div class="legend-row"><span class="swatch" style="background:var(--red)"></span><span class="lbl">Page fault → disk</span><span class="v">~50–150µs</span></div>
+      <div class="legend-row"><span class="swatch" style="background:var(--violet)"></span><span class="lbl">Swap I/O</span><span class="v">µs–ms</span></div>
+      <div class="legend-row"><span class="swatch" style="background:rgba(94,200,255,0.18); border-color:var(--blue-d)"></span><span class="lbl">Page-table read</span><span class="v">cached</span></div>
+    </div>
+
+    <div class="panel">
+      <h3>Trace Log</h3>
+      <div id="trace"></div>
+    </div>
+  </aside>
+</div>
+
+<section class="explain">
+
+  <h4 class="section-title">// real-world walkthroughs</h4>
+
+  <!-- ── EXAMPLE 1 · int *a = malloc(); *a = 10; ── -->
+  <div class="ex-card hit">
+    <div class="ex-label">▸ example 1 · heap write — <code>*a = 10</code></div>
+    <pre><span style="color:var(--blue)">int</span> *a = <span style="color:var(--amber)">malloc</span>(<span style="color:var(--phos)">sizeof</span>(<span style="color:var(--blue)">int</span>));   <span class="cm">// glibc asks OS for a VMA via mmap()</span>
+*a = <span style="color:var(--phos)">10</span>;                        <span class="cm">// first ever write to this address</span></pre>
+
+    <p><b>malloc(4)</b> returns a virtual address like <code>0x55a3·c4f0·2a80</code> almost instantly. glibc called <code>mmap(MAP_ANONYMOUS|MAP_PRIVATE)</code> earlier to grab a chunk of address space. The kernel recorded a <b>VMA</b> in <code>mm_struct</code> — but allocated <b>zero physical RAM</b>. This is "lazy" allocation: pages only exist when you touch them.</p>
+
+    <p><b>*a = 10</b> — CPU issues a <b>store</b> to that VA. The MMU checks the L1 TLB: <span class="tag-miss">⚡ TLB miss</span> — never seen this address. Page walker reads the PTE: <code>P=0</code> (not present). <span class="tag-fault">⚠ #PF minor fault</span> — trap to <code>do_page_fault()</code>.</p>
+
+    <p>Kernel verifies a valid VMA exists (it does). Calls <code>__alloc_pages_node()</code> — the <b>buddy allocator</b> hands over a free 4 KiB frame (PFN <code>0x12F1</code>). Calls <code>clear_page()</code> to zero it (so your program never sees stale data from a previous process). Writes PTE: <code>0x55a3…a000 → PFN 0x12F1 | P|RW|US|A</code>. Fills the TLB. Returns.</p>
+
+    <p>CPU <b>retries</b> the store. Now: <span class="tag-hit">✓ L1 TLB hit</span> → PA = <code>0x12F1·000 + 0xa80</code> → <span class="tag-hit">✓ L1d cache write</span> → <code>10</code> is stored. DRAM not written yet (write-back cache). <span class="ex-tip">⏱ ~10 µs total</span> <span class="ex-tip">💾 zero disk I/O</span></p>
+  </div>
+
+  <!-- ── EXAMPLE 2 · fread() cold file ── -->
+  <div class="ex-card fault">
+    <div class="ex-label">▸ example 2 · file read — <code>fread(buf, 1, 4096, f)</code> (cold cache)</div>
+    <pre><span style="color:var(--blue)">FILE</span> *f = <span style="color:var(--amber)">fopen</span>(<span style="color:var(--phos)">"data.bin"</span>, <span style="color:var(--phos)">"r"</span>);
+<span style="color:var(--blue)">char</span> buf[4096];
+<span style="color:var(--amber)">fread</span>(buf, <span style="color:var(--phos)">1</span>, <span style="color:var(--phos)">4096</span>, f);   <span class="cm">// very first read of this file</span></pre>
+
+    <p><b>fread</b> calls <code>read(fd, buf, 4096)</code> — a syscall. The kernel's VFS asks the <b>page cache</b>: "is offset 0 of <code>data.bin</code> already in RAM?" Answer: <span class="tag-fault">no, page cache miss</span>.</p>
+
+    <p><span class="tag-fault">⚠ #PF major fault</span> — <code>filemap_fault()</code> allocates a page-cache frame, calls <code>submit_bio()</code>, and queues a 4 KiB read request to the <b>NVMe block driver</b>. The calling process is put to sleep (<code>TASK_UNINTERRUPTIBLE</code>) — it truly cannot run until the disk responds.</p>
+
+    <p>~50–150 µs later: NVMe controller finishes DMA, raises an <b>IRQ</b>. Block layer marks the frame <code>PG_uptodate</code>, installs the PTE, and wakes the process. The scheduler re-queues it.</p>
+
+    <p>CPU retries: <span class="tag-miss">⚡ TLB miss</span> (PTE brand new) → page walk → PA → <span class="tag-miss">⚡ L1/L2/L3 all miss</span> (cold frame, never cached) → DRAM serves the 64-byte cache line → <code>fread</code> copies bytes into <code>buf</code>. <span class="ex-tip">⏱ ~100 µs first read</span></p>
+
+    <p>Now call <code>fread</code> again on the <b>same offset</b>: <span class="tag-hit">✓ page cache hit</span> → <span class="tag-hit">✓ L1 TLB hit</span> → <span class="tag-hit">✓ L1d cache hit</span> → served in <b>~4 cycles</b>. This is why repeatedly reading the same file is dramatically faster — the OS page cache acts as a read-through DRAM cache for disk. <span class="ex-tip">⚡ 10,000× faster on repeat read</span></p>
+  </div>
+
+  <!-- ── EXAMPLE 3 · swap-in under memory pressure ── -->
+  <div class="ex-card swap">
+    <div class="ex-label">▸ example 3 · swap-in — array access after eviction</div>
+    <pre><span class="cm">// System has 8 GiB RAM. Your program allocated 8 GiB.</span>
+<span class="cm">// kswapd evicted large_array[i..i+1023] to /swapfile.</span>
+<span style="color:var(--amber)">printf</span>(<span style="color:var(--phos)">"%d\n"</span>, large_array[i]); <span class="cm">// touches the evicted page</span></pre>
+
+    <p>System RAM hit the low-watermark. <b>kswapd</b> (a kernel thread) woke up, walked the <b>inactive LRU list</b>, picked cold anonymous pages, wrote them to <code>/swapfile</code> via the swap subsystem, and <b>cleared</b> each PTE — encoding a swap entry (<code>type=0, offset=0x1A2</code>) in bits 1–63 of the PTE instead of a frame number.</p>
+
+    <p><code>large_array[i]</code> — CPU emits VA → <span class="tag-miss">⚡ L1/L2 TLB miss</span> → page walk reads PTE: it encodes a swap entry, <code>P=0</code>. <span class="tag-swap">⚡ #PF swap fault</span> — <code>do_swap_page()</code> is called.</p>
+
+    <p>Kernel looks up the <b>swap cache</b> (in-memory index of recently swapped pages) — cache miss. Calls <code>swap_readpage()</code> → <code>submit_bio()</code> → reads 4 KiB from <code>/swapfile</code> at offset <code>0x1A2 × 4096</code>. Process sleeps. NVMe completes → frame restored → PTE rewritten with real frame number + <code>P=1</code>.</p>
+
+    <p>CPU retries → cold cache path → DRAM → <code>printf</code> finally runs. <span class="ex-tip">⏱ 100–500 µs</span> <span class="ex-tip">🔥 up to 100,000× slower than L1 hit</span></p>
+
+    <p>This is why swap usage is a serious performance warning sign on servers. Monitor with: <code>vmstat 1</code> → watch the <b>si</b> (swap-in) and <b>so</b> (swap-out) columns. Any non-zero <b>si</b> means your workload is hitting evicted pages — add RAM or reduce memory pressure.</p>
+  </div>
+
+  <!-- ─── Two-column theory reference ── -->
+  <h4>// the journey</h4>
+  <p>A user-space process issues a <b>virtual address</b> (VA). The CPU never speaks physical RAM directly — every load and store is filtered by the <b>MMU</b>, which translates VA → PA using the process's page tables rooted at <code>%cr3</code>.</p>
+
+  <h4>// l1 tlb · per-core, ~1 cycle</h4>
+  <p>To avoid walking page tables on every access, the MMU consults a small <b>L1 TLB</b> sitting next to each core (separate <code>iTLB</code> and <code>dTLB</code>, ~64 entries each). On hit, the physical address is produced almost for free.</p>
+
+  <h4>// l2 stlb · unified, ~7 cycles</h4>
+  <p>If L1 misses, the larger <b>L2 STLB</b> (~1.5K entries, shared instructions+data) is checked. Modern CPUs walk this in parallel with speculative execution to hide cost.</p>
+
+  <h4>// hardware page walk · ~100–250 cycles</h4>
+  <p>Both TLBs miss → the <b>HW page walker</b> traverses the four levels (PML4 → PDPT → PD → PT) by reading PTEs from RAM. Those reads go through the <b>data caches</b>, so a "warm" walk is much cheaper than a cold one.</p>
+
+  <h4>// minor fault · #pf, no I/O</h4>
+  <p>PTE has <code>P=0</code> but valid VMA exists — e.g. <code>malloc()</code>'d memory on first touch, or a copy-on-write page after <code>fork()</code>. Kernel allocates a zeroed frame, installs the PTE, retries. <b>No disk touched.</b></p>
+
+  <h4>// major fault · #pf, disk</h4>
+  <p>Page is file-backed but not yet in the page cache — e.g. first <code>fread()</code> of a cold file. Kernel issues block I/O, waits, fills a frame, updates PTE. The slow path: ~50–150 µs.</p>
+
+  <h4>// swap-in · #pf, swap_entry</h4>
+  <p>PTE encodes a swap entry — page was evicted by <b>kswapd</b> when RAM was full. Kernel reads it back from <code>/swapfile</code> via the swap cache. Rewriting the PTE restores normal access.</p>
+
+  <h4>// caches, in parallel</h4>
+  <p>Once a PA is in hand, the load hits <b>L1d → L2 → L3</b>. A miss in all three goes to <b>DRAM</b>. L1d lookup (VIPT) often runs <b>in parallel</b> with TLB lookup — only tag comparison waits on the PA.</p>
+
+  <h4>// reclaim · keeping ram free</h4>
+  <p>When free memory falls below watermarks, <b>kswapd</b> walks active/inactive LRU lists, writes dirty pages back, and frees clean ones. Under extreme pressure the <b>OOM killer</b> terminates a process.</p>
+
+</section>
+
+<script>
+/* ===========================================================
+   Linux memory hierarchy — interactive simulation
+   =========================================================== */
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+
+// ---- Generate RAM frames grid (12x4) ----
+(function buildRam(){
+  const g = document.getElementById('ram-frames');
+  if(!g) return;
+  const cols=12, rows=4, w=18, h=10, gx=2, gy=3;
+  const states = ['used','used','used','frame','dirty','used','frame','used','swap','used','used','frame'];
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      rect.setAttribute('x', c*(w+gx));
+      rect.setAttribute('y', r*(h+gy));
+      rect.setAttribute('width', w);
+      rect.setAttribute('height', h);
+      const stateIdx = (r*7+c*3)%12;
+      let st = states[stateIdx];
+      // make the alloc target start as an empty frame so the minor-fault scenario
+      // visibly fills it
+      if(r===2 && c===4) st = 'frame';
+      rect.setAttribute('class','frame ' + (st==='frame' ? '' : st));
+      if(r===2 && c===4){
+        rect.setAttribute('id','ram-target');
+        // remember coordinates inside the frames grid so the alloc-halo can sit on top
+        rect.setAttribute('data-cx', c*(w+gx));
+        rect.setAttribute('data-cy', r*(h+gy));
+      }
+      g.appendChild(rect);
+    }
+  }
+})();
+
+// ---- State / counters ----
+const counters = { l1:0, l2:0, walk:0, major:0, minor:0, swap:0 };
+function bumpCounter(k){
+  counters[k]++;
+  const map = {l1:'c-l1', l2:'c-l2', walk:'c-walk', major:'c-major', minor:'c-minor', swap:'c-swap'};
+  const el = document.getElementById(map[k]);
+  if(el) el.textContent = counters[k].toString().padStart(2,'0');
+}
+
+// ---- Trace logger ----
+function ts(){
+  const t = performance.now()/1000;
+  return t.toFixed(3).padStart(8,' ');
+}
+function log(tag, msg, kind='info'){
+  const div = document.createElement('div');
+  div.className='line';
+  div.innerHTML = `<span class="ts">${ts()}</span><span class="tag t-${kind}">${tag}</span><span class="msg">${msg}</span>`;
+  const t = $('#trace');
+  t.appendChild(div);
+  t.scrollTop = t.scrollHeight;
+  // cap
+  while(t.children.length > 80) t.removeChild(t.firstChild);
+}
+
+// ---- Wire & block highlight helpers ----
+function lightWire(id, kind, durMs){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const cls = ({hit:'active', miss:'miss', fault:'fault', swap:'swap', info:'active'})[kind] || 'active';
+  el.classList.add(cls);
+  // marker swap
+  const marker = ({hit:'ah', miss:'am', fault:'af', swap:'as', info:'ai'})[kind];
+  if(marker) el.setAttribute('marker-end', `url(#${marker})`);
+  setTimeout(()=>{
+    el.classList.remove('active','miss','fault','swap');
+    el.setAttribute('marker-end','url(#adim)');
+  }, durMs);
+}
+function litBlock(id, kind, durMs){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const cls = `lit-${kind}`;
+  el.classList.add(cls);
+  setTimeout(()=>el.classList.remove(cls), durMs);
+}
+function flashCell(id, kind){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.remove('flash-hit','flash-miss','flash-flip');
+  void el.offsetWidth;
+  if(kind === 'hit')      el.classList.add('flash-hit');
+  else if(kind === 'flip') el.classList.add('flash-flip');
+  else                     el.classList.add('flash-miss');
+}
+
+// ---- Show an "alloc" halo over the target RAM frame ----
+function showAllocHalo(labelText){
+  const halo  = document.getElementById('alloc-halo');
+  const text  = document.getElementById('alloc-halo-text');
+  const target = document.getElementById('ram-target');
+  if(!halo || !target) return;
+
+  // Target frame coords: RAM block is at translate(560,460), frames grid at translate(8,58),
+  // and the target rect's own x/y inside the grid.
+  const cx = parseFloat(target.getAttribute('data-cx') || target.getAttribute('x') || 0);
+  const cy = parseFloat(target.getAttribute('data-cy') || target.getAttribute('y') || 0);
+  const ax = 560 + 8 + cx;          // canvas-space top-left X of the cell
+  const ay = 460 + 58 + cy;         // canvas-space top-left Y of the cell
+
+  if(text && labelText) text.textContent = labelText;
+
+  halo.setAttribute('transform', `translate(${ax},${ay})`);
+  halo.style.display = 'block';
+  // restart the fade animation
+  const animates = halo.querySelectorAll('animate');
+  animates.forEach(a => { try{ a.beginElement(); }catch(_){} });
+  // hide after the animation duration
+  clearTimeout(halo._t);
+  halo._t = setTimeout(()=>{ halo.style.display = 'none'; }, 1700);
+}
+
+// ---- Flip the "anon, not-present" PTE row to "present" ----
+function flipPteToPresent(newLabel){
+  const row  = document.getElementById('pte-anon');
+  const text = document.getElementById('pte-anon-text');
+  if(!row) return;
+
+  // animate the colour transition
+  row.classList.remove('flash-flip');
+  void row.offsetWidth;
+  row.classList.add('flash-flip');
+
+  // after the keyframe peak, swap the semantic class & label colour so
+  // the row's resting state is now "present"
+  setTimeout(()=>{
+    row.classList.remove('invalid');
+    row.classList.add('present');
+    if(text){
+      text.textContent = newLabel || text.textContent;
+      text.setAttribute('fill','var(--phos)');
+    }
+  }, 600);
+  // remove the flip class after the animation finishes (forwards keeps the colour anyway)
+  setTimeout(()=>row.classList.remove('flash-flip'), 1300);
+}
+
+// ---- Animated packet along an SVG path ----
+function travel(pathId, kind='hit', dur=900, packetEl='#packet'){
+  return new Promise(resolve=>{
+    const path = document.getElementById(pathId);
+    const pkt = document.querySelector(packetEl);
+    if(!path || !pkt){ resolve(); return; }
+    const total = path.getTotalLength();
+    pkt.style.display='block';
+    const colors = {hit:'var(--phos)', miss:'var(--amber)', fault:'var(--red)', swap:'var(--violet)', info:'var(--blue)'};
+    const c = colors[kind] || 'var(--phos)';
+    const inner = pkt.querySelector('circle');
+    const outer = pkt.querySelectorAll('circle')[1];
+    if(inner){ inner.setAttribute('fill', c); inner.style.color=c; }
+    if(outer){ outer.setAttribute('stroke', c); outer.style.color=c; }
+    pkt.style.color = c;
+
+    lightWire(pathId, kind, dur+50);
+
+    const start = performance.now();
+    function step(now){
+      const t = Math.min(1, (now-start)/dur);
+      const e = t<0.5 ? 2*t*t : -1+(4-2*t)*t; // ease in-out
+      const p = path.getPointAtLength(total * e);
+      pkt.setAttribute('transform', `translate(${p.x},${p.y})`);
+      if(t<1) requestAnimationFrame(step);
+      else { pkt.style.display='none'; resolve(); }
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+// ---- Helpers: pause respecting speed ----
+let speed = 1;
+function ms(x){ return x / speed; }
+const wait = (x)=>new Promise(r=>setTimeout(r, ms(x)));
+
+// ---- Status bar update ----
+function setStatus({va, op, desc}){
+  if(va) $('#va').textContent = va;
+  if(op) $('#op').textContent = op;
+  if(desc) $('#opdesc').textContent = desc;
+}
+
+function randomVA(){
+  const hex = '0123456789abcdef';
+  let s = '';
+  for(let i=0;i<10;i++) s += hex[(Math.random()*16)|0];
+  return `0x00007f${s.slice(0,2)}·${s.slice(2,5)}·${s.slice(5,8)}`;
+}
+
+/* =========================================================
+   Scenarios
+   ========================================================= */
+
+async function scenarioL1Hit(){
+  const va = randomVA();
+  setStatus({va, op:'READ', desc:'CPU emits VA → consult L1 TLB'});
+  log('CPU', `load <span class="addr">${va}</span> issued`, 'info');
+  litBlock('blk-cpu','info', 600);
+
+  await travel('w-cpu-l1','info', ms(700));
+  litBlock('blk-l1tlb','hit', 800);
+  flashCell('l1-target','hit');
+  log('L1TLB', 'entry present · VPN→PFN in 1 cycle', 'hit');
+  bumpCounter('l1');
+
+  setStatus({desc:'L1 TLB hit → MMU returns PA'});
+  await travel('w-l1-mmu','hit', ms(700));
+  litBlock('blk-mmu','hit', 700);
+  log('MMU', 'translation complete · PA = 0x12E4·480', 'hit');
+
+  await travel('w-mmu-l1c','hit', ms(600));
+  litBlock('blk-l1c','hit', 700);
+  log('L1d$', 'cache line resident · ~4 cycles', 'hit');
+  setStatus({desc:'L1d cache hit → value returned to CPU'});
+}
+
+async function scenarioL2Hit(){
+  const va = randomVA();
+  setStatus({va, op:'READ', desc:'L1 TLB miss → check L2 STLB'});
+  log('CPU', `load <span class="addr">${va}</span>`, 'info');
+  await travel('w-cpu-l1','info', ms(600));
+  litBlock('blk-l1tlb','miss', 700);
+  flashCell('l1-target','miss');
+  log('L1TLB', 'miss · descend to L2', 'miss');
+
+  await travel('w-l1-l2','miss', ms(650));
+  litBlock('blk-l2tlb','hit', 800);
+  flashCell('l2-target','hit');
+  log('L2STLB', 'hit · ~7 cycles', 'hit');
+  bumpCounter('l2');
+
+  await travel('w-l2-mmu','hit', ms(700));
+  litBlock('blk-mmu','hit', 700);
+  log('MMU', 'translation OK', 'hit');
+
+  await travel('w-mmu-l1c','hit', ms(550));
+  litBlock('blk-l1c','hit', 600);
+  // miss in L1 cache, hit in L2
+  await travel('w-l1c-l2c','miss', ms(450));
+  litBlock('blk-l2c','hit', 600);
+  log('L2$', 'line found · ~12 cycles', 'hit');
+  setStatus({desc:'translation cached in TLBs · value returned'});
+}
+
+async function scenarioPageWalk(){
+  const va = randomVA();
+  setStatus({va, op:'READ', desc:'TLBs miss → HW page walk'});
+  log('CPU', `load <span class="addr">${va}</span>`, 'info');
+  await travel('w-cpu-l1','info', ms(550));
+  litBlock('blk-l1tlb','miss', 600); flashCell('l1-target','miss');
+  log('L1TLB', 'miss', 'miss');
+  await travel('w-l1-l2','miss', ms(550));
+  litBlock('blk-l2tlb','miss', 600); flashCell('l2-target','miss');
+  log('L2STLB', 'miss · invoke walker', 'miss');
+  await travel('w-l2-pw','miss', ms(600));
+  litBlock('blk-pw','miss', 1500);
+  log('WALKER', 'PML4 → PDPT → PD → PT', 'miss');
+  bumpCounter('walk');
+
+  // Walk reads page table from RAM
+  for(let i=0;i<2;i++){
+    await travel('w-pw-pt','info', ms(550), '#packet2');
+    litBlock('blk-pt','info', 400);
+  }
+  log('RAM', 'PTE = present · frame 0x12E4 · D|A|RW', 'hit');
+  flashCell('pte-target','hit');
+
+  await travel('w-pw-mmu','hit', ms(900));
+  litBlock('blk-mmu','hit', 700);
+  log('MMU', 'TLB filled · translation done', 'hit');
+
+  await travel('w-mmu-l1c','hit', ms(550));
+  litBlock('blk-l1c','miss', 500);
+  await travel('w-l1c-l2c','miss', ms(400));
+  litBlock('blk-l2c','miss', 500);
+  await travel('w-l2c-l3c','miss', ms(400));
+  litBlock('blk-l3c','hit', 500);
+  log('L3$', 'LLC hit · ~40 cycles', 'hit');
+  setStatus({desc:'walk complete · value returned via L3'});
+}
+
+async function scenarioMinorFault(){
+  const va = randomVA();
+  setStatus({va, op:'WRITE', desc:'first touch on freshly mmap\'d page'});
+  log('CPU', `store <span class="addr">${va}</span>`, 'info');
+
+  // 1. TLBs miss
+  await travel('w-cpu-l1','info', ms(450));
+  litBlock('blk-l1tlb','miss', 500); flashCell('l1-target','miss');
+  await travel('w-l1-l2','miss', ms(400));
+  litBlock('blk-l2tlb','miss', 500); flashCell('l2-target','miss');
+
+  // 2. Page walk lands on a PTE with P=0
+  await travel('w-l2-pw','miss', ms(400));
+  litBlock('blk-pw','miss', 1000);
+  await travel('w-pw-pt','info', ms(450), '#packet2');
+  litBlock('blk-pt','fault', 700);
+  // highlight the not-present row
+  flashCell('pte-anon','miss');
+  log('WALKER', 'PTE.P=0 · valid VMA exists (anon)', 'fault');
+
+  // 3. MMU raises #PF, kernel takes over
+  await travel('w-mmu-fault','fault', ms(800));
+  litBlock('blk-mmu','fault', 600);
+  log('TRAP', '#PF → do_page_fault() · kind = minor', 'fault');
+  bumpCounter('minor');
+
+  // 4. Kernel calls into the buddy allocator (DRAM)
+  await wait(150);
+  log('MM', 'handle_mm_fault() → __alloc_pages_node()', 'info');
+  await travel('w-mmu-ram','info', ms(900));
+  litBlock('blk-ram','hit', 1200);
+
+  // 5. A specific frame is allocated and zeroed — visualize it
+  const target = document.getElementById('ram-target');
+  if(target){
+    target.classList.remove('frame');
+    target.classList.add('frame','used');
+  }
+  showAllocHalo('+ frame 0x12F1');
+  log('BUDDY', 'order-0 page allocated · clear_page() · PFN 0x12F1', 'ok');
+  await wait(900);
+
+  // 6. Kernel writes back the new PTE — packet flies from RAM up into the page table
+  log('MM', 'set_pte_at() · install translation 0x12F1 P|RW|U|A', 'info');
+  await travel('w-ram-pt','hit', ms(700));
+  litBlock('blk-pt','hit', 900);
+
+  // 7. Mutate the PTE row visually: invalid (rose) → present (green) with new text
+  if(typeof flipPteToPresent === 'function'){
+    flipPteToPresent('B210·04A0 → frame 0x12F1 P|RW|U|A');
+  }
+  log('PTE', 'row updated · TLB will refill on retry', 'ok');
+  await wait(700);
+
+  // 8. CPU retries the faulting instruction — now succeeds
+  log('CPU', 'retry · instruction restarts', 'info');
+  await travel('w-pw-mmu','hit', ms(600));
+  await travel('w-mmu-l1c','hit', ms(500));
+  litBlock('blk-l1c','hit', 600);
+  setStatus({desc:'minor fault resolved · 0 disk I/O · ~10 µs'});
+}
+
+async function scenarioMajorFault(){
+  const va = randomVA();
+  setStatus({va, op:'READ', desc:'file-backed page not in cache → disk'});
+  log('CPU', `load <span class="addr">${va}</span>`, 'info');
+  await travel('w-cpu-l1','info', ms(450));
+  litBlock('blk-l1tlb','miss', 500);
+  await travel('w-l1-l2','miss', ms(400));
+  litBlock('blk-l2tlb','miss', 500);
+  await travel('w-l2-pw','miss', ms(400));
+  litBlock('blk-pw','fault', 1000);
+  await travel('w-pw-pt','info', ms(450), '#packet2');
+  litBlock('blk-pt','fault', 700);
+  log('WALKER', 'PTE.P=0 · backing = file', 'fault');
+  await travel('w-mmu-fault','fault', ms(800));
+  litBlock('blk-mmu','fault', 600);
+  log('TRAP', '#PF → filemap_fault()', 'fault');
+  bumpCounter('major');
+
+  // Submit BIO to disk
+  litBlock('blk-disk','fault', 1400);
+  log('BLOCK', 'submit_bio() → NVMe queue', 'fault');
+  await wait(700);
+  // Disk → RAM (DMA)
+  await travel('w-disk-ram','fault', ms(1100));
+  litBlock('blk-ram','hit', 800);
+  log('RAM', 'page cache filled · 4 KiB DMA', 'ok');
+
+  await travel('w-pw-mmu','hit', ms(700));
+  await travel('w-mmu-l1c','hit', ms(500));
+  litBlock('blk-l1c','miss', 500);
+  await travel('w-l1c-l2c','miss', ms(400));
+  await travel('w-l2c-l3c','miss', ms(400));
+  litBlock('blk-l3c','miss', 500);
+  log('CACHE', 'cold miss · DRAM serves line', 'miss');
+  setStatus({desc:'major fault resolved · ~80µs total'});
+}
+
+async function scenarioSwap(){
+  const va = randomVA();
+  setStatus({va, op:'READ', desc:'PTE encodes swap_entry → swap-in'});
+  log('CPU', `load <span class="addr">${va}</span>`, 'info');
+  await travel('w-cpu-l1','info', ms(450));
+  litBlock('blk-l1tlb','miss', 500);
+  await travel('w-l1-l2','miss', ms(400));
+  litBlock('blk-l2tlb','miss', 500);
+  await travel('w-l2-pw','miss', ms(400));
+  litBlock('blk-pw','swap', 1000);
+  await travel('w-pw-pt','info', ms(450), '#packet2');
+  litBlock('blk-pt','swap', 800);
+  log('WALKER', 'PTE = swap_entry 0x008·1A2', 'swap');
+  await travel('w-mmu-fault','fault', ms(800));
+  litBlock('blk-mmu','fault', 600);
+  log('TRAP', 'do_swap_page()', 'fault');
+
+  // Swap subsystem
+  litBlock('blk-swap','swap', 1400);
+  log('SWAP', 'lookup swap cache · miss · read /swapfile', 'swap');
+  await travel('w-swap-disk','swap', ms(900));
+  litBlock('blk-disk','swap', 1100);
+  log('BLOCK', 'NVMe read 4 KiB from /swapfile', 'swap');
+  await wait(600);
+  await travel('w-disk-ram','swap', ms(1000));
+  litBlock('blk-ram','swap', 800);
+  log('RAM', 'frame restored · PTE rewritten', 'ok');
+  bumpCounter('swap');
+
+  await travel('w-pw-mmu','hit', ms(600));
+  await travel('w-mmu-l1c','hit', ms(450));
+  litBlock('blk-l1c','miss', 500);
+  await travel('w-l1c-l2c','miss', ms(400));
+  await travel('w-l2c-l3c','miss', ms(400));
+  litBlock('blk-l3c','miss', 500);
+  setStatus({desc:'swap-in complete · pressure: kswapd active'});
+}
+
+/* =========================================================
+   Driver / UI
+   ========================================================= */
+const scenarios = {
+  hit: scenarioL1Hit,
+  l2hit: scenarioL2Hit,
+  walk: scenarioPageWalk,
+  minor: scenarioMinorFault,
+  major: scenarioMajorFault,
+  swap: scenarioSwap,
+};
+
+let busy = false;
+async function runScenario(name){
+  if(busy) return;
+  busy = true;
+  $$('.ctrl[data-scenario]').forEach(b=>{
+    b.classList.toggle('active', b.dataset.scenario===name);
+  });
+  try { await scenarios[name](); }
+  finally{
+    busy = false;
+    $$('.ctrl[data-scenario]').forEach(b=>b.classList.remove('active'));
+  }
+}
+
+$$('.ctrl[data-scenario]').forEach(btn=>{
+  btn.addEventListener('click', ()=>runScenario(btn.dataset.scenario));
+});
+
+let auto = false, autoTimer = null;
+const autoOrder = ['hit','hit','l2hit','hit','walk','minor','hit','major','swap','hit','l2hit'];
+let autoIdx = 0;
+async function autoTick(){
+  if(!auto) return;
+  await runScenario(autoOrder[autoIdx % autoOrder.length]);
+  autoIdx++;
+  if(auto) autoTimer = setTimeout(autoTick, ms(450));
+}
+$('#play').addEventListener('click', ()=>{
+  auto = !auto;
+  $('#play').classList.toggle('active', auto);
+  $('#play').textContent = auto ? '■ STOP' : '▶ AUTO';
+  if(auto) autoTick();
+  else { if(autoTimer) clearTimeout(autoTimer); }
+});
+
+$('#reset').addEventListener('click', ()=>{
+  Object.keys(counters).forEach(k=>counters[k]=0);
+  ['c-l1','c-l2','c-walk','c-major','c-minor','c-swap'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.textContent='0';
+  });
+  $('#trace').innerHTML = '';
+  setStatus({va:'0x00007ffe·a4c·018', op:'IDLE', desc:'awaiting trace…'});
+
+  // restore minor-fault visual state so the scenario can be replayed
+  const target = document.getElementById('ram-target');
+  if(target){
+    target.classList.remove('used','dirty','swap','flash-hit','flash-miss','flash-flip');
+    target.classList.add('frame');
+  }
+  const pteRow = document.getElementById('pte-anon');
+  if(pteRow){
+    pteRow.classList.remove('present','flash-flip','flash-hit','flash-miss');
+    pteRow.classList.add('invalid');
+  }
+  const pteText = document.getElementById('pte-anon-text');
+  if(pteText){
+    pteText.textContent = 'B210·04A0 → not present (anon)';
+    pteText.setAttribute('fill','var(--red)');
+  }
+  const halo = document.getElementById('alloc-halo');
+  if(halo) halo.style.display = 'none';
+
+  log('SYS', 'session reset · counters cleared', 'info');
+});
+
+$('#speed').addEventListener('input', e=>{
+  speed = parseFloat(e.target.value);
+  $('#speedv').textContent = speed.toFixed(1)+'×';
+});
+
+// Boot log
+log('SYS', 'mm subsystem online · 4 KiB pages · 4-level paging', 'ok');
+log('SYS', 'press a scenario or AUTO to begin trace', 'info');
+
+// Auto-run one demo on load so users see the animation
+setTimeout(()=>runScenario('hit'), 500);
+
+// ====================== THEME TOGGLE ======================
+const themeBtn = document.getElementById('themeToggle');
+function setTheme(mode){
+  const root = document.documentElement;
+  if(mode === 'day'){
+    root.setAttribute('data-theme','day');
+    themeBtn.setAttribute('data-active','day');
+  } else {
+    root.removeAttribute('data-theme');
+    themeBtn.setAttribute('data-active','night');
+  }
+  log('SYS', `theme → ${mode === 'day' ? 'day mode (paper)' : 'night mode (CRT)'}`, 'info');
+}
+themeBtn.addEventListener('click', ()=>{
+  const current = document.documentElement.getAttribute('data-theme');
+  setTheme(current === 'day' ? 'night' : 'day');
+});
+// honor system preference if user hasn't toggled yet
+if(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches){
+  setTheme('day');
+}
+
+</script>
+</body>
+</html>
