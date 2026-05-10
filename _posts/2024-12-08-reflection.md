@@ -8,12 +8,13 @@ tags: [thoughts]
 
 ### Reflection
 
-1. **Slow down**: Resist the urge to finish reading quickly. Reading faster doesn't mean learning more — it often means retaining less. Pause at the end of a chapter. Sit with an idea before moving on. The goal is depth, not distance covered.
+1. **Take your time**: Take your time to read, reflect, and think about the chapter or paragraph thouroughly that matters you the most. Remember we're not in a race.
 
-2. **Question**: Ask hard questions as you go: *What is the author really arguing? What assumptions underpin this? Where does the reasoning break down?* Good reading is mostly a dialogue.
+2. **Question & Engage with the material**: As you read, ask yourself questions like: "What is the main argument?" "What are the author's assumptions?" "How does this relate to my own experiences or perspectives?"
 
-3. **Synthesize**: It's not enough to understand what the author said — think about what it means *to you*. Connect ideas across books, across disciplines, across your own experiences. That's where real insight lives.
+3. **Evaluate**: Practice what you learn. Apply the concepts and techniques you're learning to real-life situations. This will help solidify your understanding and make it more to your personal experience.  
 
-4. **Close the loop with action**: Knowledge without application fades. After reading something meaningful, find one concrete way to use it — a decision to make differently, a habit to test, a conversation to have. The real measure of a good read is what changes afterward.
+4. **Action**: See if you can apply it in your life somewhere, a small effort for change.  
 
-The most important thing is to enjoy the process. If you're dreading it, the book will collect dust, the article will sit in "read later" forever, and that's okay. But if something genuinely interests you, protect that curiosity. Read it like it matters.
+The most important thing is to enjoy the process. If you're unable to read more of it that's okay, may be its not for you. Its better to move on rather than having the compulsion to "finish" the book. I tend to highlight
+some of the parts in a paragraph, indexing it rather to come back to it later.
