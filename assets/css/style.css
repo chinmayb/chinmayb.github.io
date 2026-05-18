@@ -9,6 +9,17 @@
   --tag-bg:  #2e2925;
 }
 
+/* ── Day theme (auto-applied 6 AM – 7 PM) ── */
+html.day {
+  --bg:      #FAFAF8;
+  --surface: #F0EDE8;
+  --border:  #D8D0C8;
+  --text:    #1C1917;
+  --muted:   #6B645C;
+  --accent:  #A0714A;
+  --tag-bg:  #EDE8E0;
+}
+
 /* ── Reset ── */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -51,6 +62,12 @@ header {
   letter-spacing: -0.01em;
 }
 
+.header-actions {
+  display: flex;
+  align-items: baseline;
+  gap: 1.2rem;
+}
+
 .about-btn {
   font-size: 0.78rem;
   color: var(--muted);
@@ -65,6 +82,21 @@ header {
   color: var(--text);
   border-bottom-color: var(--text);
 }
+
+.theme-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--muted);
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.15s;
+  user-select: none;
+}
+
+.theme-btn:hover { color: var(--text); }
 
 /* ── Main nav ── */
 nav {

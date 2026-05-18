@@ -8,16 +8,38 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+  <script>var s=localStorage.getItem('theme');if(s==='day'||(s===null&&new Date().getHours()>=6&&new Date().getHours()<19))document.documentElement.classList.add('day');</script>
 </head>
 <body>
   <div class="page">
     <header>
       <a class="site-name" href="/">{{ site.author }}</a>
-      <a class="about-btn" href="/about/">about</a>
+      <div class="header-actions">
+        <button class="theme-btn" id="theme-btn" aria-label="Toggle theme"></button>
+        <a class="about-btn" href="/about/">about</a>
+      </div>
     </header>
     <main>
       {{ content }}
     </main>
+    <script>
+      var themeBtn = document.getElementById('theme-btn');
+      function applyTheme(isDay) {
+        document.documentElement.classList.toggle('day', isDay);
+        themeBtn.textContent = isDay ? '☾' : '☀';
+      }
+      var saved = localStorage.getItem('theme');
+      if (saved) {
+        applyTheme(saved === 'day');
+      } else {
+        applyTheme(new Date().getHours() >= 6 && new Date().getHours() < 19);
+      }
+      themeBtn.addEventListener('click', function() {
+        var isDay = !document.documentElement.classList.contains('day');
+        applyTheme(isDay);
+        localStorage.setItem('theme', isDay ? 'day' : 'night');
+      });
+    </script>
     <footer>
       <a href="https://github.com/{{ site.github_username }}">github</a>
       <a href="#">linkedin</a>
