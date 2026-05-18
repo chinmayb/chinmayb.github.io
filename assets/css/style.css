@@ -149,6 +149,8 @@ nav button.active {
   align-items: start;
 }
 
+.landing-grid > * { min-width: 0; }
+
 .lately {
   border-left: 1px solid var(--border);
   padding-left: 2rem;
@@ -586,9 +588,10 @@ footer a { color: var(--muted); }
 footer a:hover { color: var(--text); }
 
 /* ── Responsive ── */
-@media (max-width: 600px) {
-  .page { padding: 2rem 1.2rem 4rem; }
 
+/* Grid collapses at 768px — covers phones in any orientation and prevents
+   Brave's fingerprint-protection viewport rounding from keeping 2-col on mobile */
+@media (max-width: 768px) {
   .landing-grid {
     grid-template-columns: 1fr;
     row-gap: 0;
@@ -601,6 +604,10 @@ footer a:hover { color: var(--text); }
     padding-top: 1.8rem;
     margin-top: 1.8rem;
   }
+}
+
+@media (max-width: 600px) {
+  .page { padding: 2rem 1.2rem 4rem; }
 
   nav { gap: 1.2rem; overflow-x: auto; }
   nav button { white-space: nowrap; flex-shrink: 0; }
