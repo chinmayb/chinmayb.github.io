@@ -6,10 +6,10 @@ categories: general
 tags: [DNS, networking, learning]
 ---
 
-*DNS Part II*
+> DNS Part II
 
 We looked at evolution and query flow in the [previous post](https://chinmayabharadwaj.substack.com/p/dns-evolution-and-flow?r=pq6fj&utm_campaign=post-expanded-share&utm_medium=web). Let’s look at how data redundancy and update propagation are achieved in the DNS.
-![](https://substackcdn.com/image/fetch/$s_!MN2_!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F19bc25bd-da36-493c-93f3-7fcbd94ec205_2701x1203.png)
+![DNS update and propagation flow](https://substackcdn.com/image/fetch/$s_!MN2_!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F19bc25bd-da36-493c-93f3-7fcbd94ec205_2701x1203.png)
 
 Let’s take a real world example. You've set up a cool website, `shipmyproduct.com` to sell your product. You find the registrars like `godaddy` and purchase a domain and wire it to your web servers, which have the following IPs
 
@@ -34,7 +34,7 @@ The SOA or **Start Of Authority** record is created as a mandatory metadata for 
 
 E.g SOA for `shipmyproduct.com` may look like this:
 
-```
+```text
 @   IN   SOA   ns1.shipmyproduct.com. admin.shipmyproduct.com. (
                    10         ; Serial number (32 bit serial)
                    3600       ; Refresh timer (1 hour)
@@ -50,7 +50,7 @@ Secondaries get the `notify` event and asks the primary “whats your serial num
 
 E.g. Journal entry may look like this in the primary.
 
-```
+```text
 ; Transaction: serial 10 -> 11
 
 del shipmyproduct.com. 300 IN A    52.168.10.12

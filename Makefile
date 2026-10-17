@@ -26,6 +26,10 @@ verify:
 	  "bundle config set path /tmp/bundle >/dev/null && bundle install >/dev/null && bundle exec jekyll build -d /tmp/out && rm -rf /srv/_site && cp -r /tmp/out /srv/_site"
 	@grep -q 'class="photo"' _site/index.html && echo "ok: photos section rendered" || (echo "FAIL: no photos rendered"; exit 1)
 
+# Lint markdown (CLAUDE.md, README.md, _posts/*.md) with markdownlint in Docker. Config: .markdownlint-cli2.jsonc.
+lint-md:
+	docker run --rm -v "$$PWD":/workdir davidanson/markdownlint-cli2:latest
+
 post:
 	@read -p "Post title: " title; \
 	slug=$$(echo "$$title" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-'); \
@@ -34,4 +38,4 @@ post:
 	$(EDITOR) $$file; \
 	echo "Created $$file"
 
-.PHONY: serve docker-serve verify reads books podcasts repos post
+.PHONY: serve docker-serve verify lint-md reads books podcasts repos post

@@ -1,0 +1,8 @@
+{
+  "config": {
+    "MD013": false,
+    "MD010": false,
+    "MD033": false
+  },
+  "globs": ["CLAUDE.md", "README.md", "_posts/*.md"]
+}

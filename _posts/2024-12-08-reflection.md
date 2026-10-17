@@ -6,7 +6,7 @@ categories: general
 tags: [thoughts]
 ---
 
-### Reflection
+## Reflection
 
 1. **Take your time**: Take your time to read, reflect, and think about the chapter or paragraph thouroughly that matters you the most. Remember we're not in a race.
 

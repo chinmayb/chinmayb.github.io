@@ -12,8 +12,16 @@ It runs `jekyll build` in a `ruby:3.2` container and checks that the photos
 section rendered into `_site/index.html`. Run it after any change to
 `index.html`, `_layouts/`, `_includes/`, `_data/`, `assets/` or the Gemfile.
 
-To view the site, run `make docker-serve` and open http://localhost:4000
+To view the site, run `make docker-serve` and open <http://localhost:4000>
 (`make serve` needs a local Ruby 3+, which this machine lacks).
+
+## Markdown lint
+
+Run `make lint-md` after adding or editing any `.md` file (posts in `_posts/`,
+`CLAUDE.md`, `README.md`) and fix everything it reports before committing. It runs
+markdownlint in Docker with the rules in `.markdownlint-cli2.jsonc` (line length
+and inline HTML are allowed). Fenced code blocks need a language and images need
+alt text.
 
 ## Tabs and URLs
 

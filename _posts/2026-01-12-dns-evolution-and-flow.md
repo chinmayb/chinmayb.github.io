@@ -6,7 +6,7 @@ categories: general
 tags: [DNS, networking, learning]
 ---
 
-*An attempt to explain DNS to humans*
+> An attempt to explain DNS to humans
 
 How do two computers interact in the wild internet jungle? They need IP Addresses. Humans, on the other hand, are bad at remembering names, let alone a long string of numbers! To mitigate this, we use short, human-friendly names like *x.com* to reach the websites/hosts we want and a system in the background that maps names to the IP addresses.
 
@@ -18,7 +18,7 @@ Back in the 1970s, the internet as we know today didn’t exist. There was somet
 
 It was a very simple text-formatted file, containing flat names like this.
 
-```
+```text
 ;GIDNEY::<PAETZOLD.ARPANET>HOSTS.TXT.4, 25-Mar-85 13:56:55, Edit by PAETZOLD
 ;local stuff
 
@@ -50,9 +50,9 @@ This was a problematic for many reasons
 - Latency: Others have to FTP the file regularly into their system to talk to anyone else.
 - Scale: Large host files were too slow to copy & parse for the computers
 
-#### Legacy system
+### Legacy system
 
-![](https://substackcdn.com/image/fetch/$s_!N7IC!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F707818c9-58a7-4fdb-8f52-8e5fac97402a_627x464.png)
+![Legacy hosts.txt system](https://substackcdn.com/image/fetch/$s_!N7IC!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F707818c9-58a7-4fdb-8f52-8e5fac97402a_627x464.png)
 
 So how’d you solve it ? Sharding and making this into a smaller problem is the way to go. Lets look into the details.
 
@@ -72,7 +72,7 @@ To make it possible to spread the DNS database across thousands of servers aroun
 
 The terms *domain* and *zone* could be confusing. A *zone* is a portion of a domain, for ease of administration. Whereas ***domain*** is a hierarchy of labels, as explained above. Zone can be pictured like below.
 
-```
+```text
 .                    <- root zone
 └── com.             <- zone
     └── google.com.  <- zone
@@ -81,7 +81,7 @@ The terms *domain* and *zone* could be confusing. A *zone* is a portion of a dom
 
 ### Modern Domain Name System
 
-![](https://substackcdn.com/image/fetch/$s_!U0y1!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F5a2944b9-4f07-4764-b319-de253edf78ff_1553x752.png)
+![Modern DNS hierarchy](https://substackcdn.com/image/fetch/$s_!U0y1!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F5a2944b9-4f07-4764-b319-de253edf78ff_1553x752.png)
 
 You may ask why tree structure and not other data structures ? Tree structure provides an administrative sharding/delegation. Once you have ***google.com***, Google can independently manage hosts for various features like *drive.google.com*, *mail.google.com* independently, without asking the root. A tree allows just that. If you see, in this case , ***.com*** is managed by someone & drive.google.com. managed by someone else, i.e some other nameserver & admins. Imagine if it was a distributed hashmap, the management would have been difficult, you can’t definitely say a subdomain is managed by a particular company, as hashmaps distribute keys uniformly. DNS is for humans, so its optimised for *delegation*, not *lookup.*
 
@@ -91,11 +91,11 @@ To understand it better real world analogy, The old ***host table system*** was 
 
 So what actually what happens when you hit a website let’s say **drive.google.com** in your browser ?
 
-![](https://substackcdn.com/image/fetch/$s_!GblA!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fa93073cf-5ef7-4692-8f3a-0228f44e8be7_4764x2005.png)
+![DNS resolution flow for drive.google.com](https://substackcdn.com/image/fetch/$s_!GblA!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fa93073cf-5ef7-4692-8f3a-0228f44e8be7_4764x2005.png)
 
 1. When you hit drive.google.com on the browser, it doesn’t talk to DNS servers directly. It simply calls a function.
 
-   ```
+   ```c
    int getaddrinfo(const char *restrict node,
                    const char *restrict service,
                    const struct addrinfo *restrict hints,
@@ -104,7 +104,7 @@ So what actually what happens when you hit a website let’s say **drive.google.
 
 2. Stub Resolver running in your computer acts upon it. It sends a UDP/TCP datagram request to the remote resolver with the RD bit set(Asking for recursion). It doesn’t send *drive.google.com* as a string, its a collection of length-prefixed labels to match the tree structure.
 
-   ```
+   ```text
    DNS Query
    ---------
    Header:
@@ -118,9 +118,9 @@ So what actually what happens when you hit a website let’s say **drive.google.
 
    ```
 
-    Wait, Where does the stub resolver find the resolver IP ? Its under */etc/resolv.conf. *Content may look like.
+    Wait, Where does the stub resolver find the resolver IP ? Its under `/etc/resolv.conf`. Content may look like.
 
-   ```
+   ```sh
    cat /etc/resolv.conf
 
    nameserver 1.1.1.1
@@ -132,7 +132,7 @@ So what actually what happens when you hit a website let’s say **drive.google.
    There’s usually . at the end, since it always indicates root, we dont usually mention it. A question arises here, How does the ISP resolver know how to reach the root or `.`? Usually the resolver softwares like *Bind, Unbound* etc contain the root servers IP. These root IPs rarely change, also it comes with the DNSSEC root trust anchors. So you trust them. DNSSEC is a topic for another day.
 5. The root servers are responsible for . and its immediate children, it replies with referals, ***com*** nameservers in this case with additional glue record mentioning it’s IP.
 
-   ```
+   ```text
    Referral:
      com. NS a.gtld-servers.net
    Additional(glue):
@@ -147,7 +147,7 @@ So what actually what happens when you hit a website let’s say **drive.google.
 
    The DNS response received by the resolver would conceptually look like this.
 
-   ```
+   ```sh
    > dig drive.google.com @ns1.google.com
 
    ; <<>> DiG 9.10.6 <<>> drive.google.com @ns1.google.com
@@ -173,14 +173,14 @@ So what actually what happens when you hit a website let’s say **drive.google.
 
     The highlighted ANSWER section says its an **A record** (Address record, one of the **Resource Record**s) type and has what we’re looking for. You can see this DNS journey on your computer by running the below command, something I’d like you to try out!
 
-   ```
+   ```sh
    dig drive.google.com +trace
    ```
 
 9. Finally, IP is obtained! HTTPS request is made to the actual server, after the SSL handshake, you will see your files :) There’s an [excellent blog](https://substack.com/inbox/post/164213649?r=6xhat&utm_medium=ios&triedRedirect=true) by  about the internet routing, do read.
 
 Overall, to summarise the components, the modern domain name system broadly consists of the following components.
-![](https://substackcdn.com/image/fetch/$s_!jVR9!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F2e9eecba-d9c7-425e-9cd4-aa2668d711f9_1369x1042.png)
+![Components of the modern DNS](https://substackcdn.com/image/fetch/$s_!jVR9!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F2e9eecba-d9c7-425e-9cd4-aa2668d711f9_1369x1042.png)
 
 Stay tuned for next part where will discuss how DNS updates happen & DNS security aspects.
 
@@ -188,4 +188,4 @@ Stay tuned for next part where will discuss how DNS updates happen & DNS securit
 
 - [DNS RFC](https://datatracker.ietf.org/doc/html/rfc1034)
 - [OG hosts.txt](https://pdp-10.trailing-edge.com/tops20_v6_1_tcpip_installation_tp_ft6/06/new-system/hosts.txt)
--  [Bit of DNS history by Paul Mockapetris](https://www.youtube.com/watch?v=lgLF8Amm9QE)
+- [Bit of DNS history by Paul Mockapetris](https://www.youtube.com/watch?v=lgLF8Amm9QE)
