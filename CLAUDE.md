@@ -36,3 +36,4 @@ URL with `history.pushState`. A new tab needs a section, a button and a folder.
   Instagram API using `IG_ACCESS_TOKEN`. Locally it is not run; the file stays `[]`.
 - When that list is empty the page falls back to `_data/photos_sample.json`.
 - Music (`assets/audio/`) starts on the Photos tab click via `window.photoMusic` in `index.html`.
+- Icon toggle above the photos switches Grid / Slider. Slider is vertical (wheel, arrows, swipe, buttons) over a blurred backdrop and reuses the grid's figures.
