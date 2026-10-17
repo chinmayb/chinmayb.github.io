@@ -18,8 +18,12 @@ LIMIT = 60
 
 
 def get(url):
-    with urllib.request.urlopen(url, timeout=30) as r:
-        return json.load(r)
+    try:
+        with urllib.request.urlopen(url, timeout=30) as r:
+            return json.load(r)
+    except urllib.error.HTTPError as e:
+        # Instagram's error body explains the cause and never echoes the token
+        sys.exit(f"Instagram API error {e.code}: {e.read().decode()[:400]}")
 
 
 def refresh(token):
@@ -27,7 +31,7 @@ def refresh(token):
     q = urllib.parse.urlencode({"grant_type": "ig_refresh_token", "access_token": token})
     try:
         get(f"{API}/refresh_access_token?{q}")
-    except Exception as e:
+    except SystemExit as e:
         print(f"warning: token refresh failed: {e}", file=sys.stderr)
 
 
