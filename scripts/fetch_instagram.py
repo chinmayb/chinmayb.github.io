@@ -14,7 +14,7 @@ import urllib.request
 API = "https://graph.instagram.com"
 OUT = os.path.join(os.path.dirname(__file__), "..", "_data", "photos.json")
 FIELDS = "id,caption,media_type,media_url,permalink,timestamp,children{media_type,media_url}"
-LIMIT = 60
+LIMIT = 100
 
 
 def get(url):
@@ -41,13 +41,14 @@ def photos(token):
     while url and len(out) < LIMIT:
         page = get(url)
         for m in page.get("data", []):
-            src = m.get("media_url")
             if m["media_type"] == "CAROUSEL_ALBUM":
-                kids = [c for c in m.get("children", {}).get("data", []) if c["media_type"] == "IMAGE"]
-                src = kids[0]["media_url"] if kids else None
-            elif m["media_type"] != "IMAGE":
+                kids = m.get("children", {}).get("data", [])
+                srcs = [c["media_url"] for c in kids if c["media_type"] == "IMAGE" and c.get("media_url")]
+            elif m["media_type"] == "IMAGE" and m.get("media_url"):
+                srcs = [m["media_url"]]
+            else:
                 continue
-            if src:
+            for src in srcs:
                 out.append({"src": src, "caption": (m.get("caption") or "").strip(),
                             "link": m["permalink"], "date": m["timestamp"][:10]})
         url = page.get("paging", {}).get("next")
