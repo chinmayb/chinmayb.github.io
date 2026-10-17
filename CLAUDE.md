@@ -15,6 +15,13 @@ section rendered into `_site/index.html`. Run it after any change to
 To view the site, run `make docker-serve` and open http://localhost:4000
 (`make serve` needs a local Ruby 3+, which this machine lacks).
 
+## Tabs and URLs
+
+The home page lives in `_includes/home.html`. `index.html`, `reading/`, `listening/`,
+`repos/` and `photos/` each include it with a `tab=` value, so every tab has a real
+URL (e.g. chinmaya.fyi/photos/). Clicking a tab switches instantly and updates the
+URL with `history.pushState`. A new tab needs a section, a button and a folder.
+
 ## Photos tab
 
 - `scripts/fetch_instagram.py` writes `_data/photos.json` (gitignored) from the

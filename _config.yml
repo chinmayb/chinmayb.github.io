@@ -70,3 +70,11 @@ collections:
 
 future: true
 include: ["tags.html"]
+
+# Dev-only files that should not be published
+exclude:
+  - CLAUDE.md
+  - Makefile
+  - scripts
+  - README.md
+  - minima.gemspec
