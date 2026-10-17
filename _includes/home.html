@@ -60,7 +60,7 @@
           <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
           <div class="post-meta">
             {% if post.tags.size > 0 %}
-            <span class="tag">{{ post.tags | first }}</span>
+            <a class="tag" href="{{ '/tags/' | relative_url }}#{{ post.tags | first | slugify }}">{{ post.tags | first }}</a>
             {% endif %}
             <span class="post-date">{{ post.date | date: "%b %Y" }}</span>
           </div>
@@ -188,11 +188,13 @@
     function setSrc() { audio.src = tracks[i]; }
     function ramp(to, done) {
       clearInterval(fade);
+      // Fixed step count: mobile Safari ignores audio.volume, so never wait for it to reach `to`
+      var steps = 0, from = audio.volume;
       fade = setInterval(function() {
-        var v = audio.volume + (to > audio.volume ? 0.02 : -0.02);
-        if ((to > audio.volume && v >= to) || (to < audio.volume && v <= to)) {
+        steps++;
+        if (steps >= 15) {
           audio.volume = to; clearInterval(fade); if (done) done();
-        } else { audio.volume = v; }
+        } else { audio.volume = from + (to - from) * steps / 15; }
       }, 80);
     }
     function play() {
